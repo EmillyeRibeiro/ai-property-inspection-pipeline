@@ -29,6 +29,18 @@ The repository contains sanitized versions of the workflows used to demonstrate 
 - **Optional CRM/file delivery integration**
 - **Sanitized and portable n8n workflow exports**
 
+## Workflow Overview
+
+The core inspection-processing workflow orchestrates the complete pipeline from
+inspection ingestion to multimodal AI analysis, structured refinement, report
+generation, and final document output.
+
+> The screenshot below illustrates the production architecture. Sensitive
+> credentials, infrastructure identifiers, URLs, and internal configuration
+> have been omitted from the public repository.
+
+![AI Property Inspection Workflow](assets/workflow-overview.png)
+
 ## Architecture
 
 ```mermaid
