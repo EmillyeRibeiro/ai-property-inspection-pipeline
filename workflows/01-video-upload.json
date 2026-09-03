@@ -1,0 +1,164 @@
+{
+  "name": "VIS | Upload de Vídeos (Sequencial)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vistoria-upload",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -368,
+        256
+      ],
+      "id": "b5d41c27-a06e-40c5-8ad1-8326e733d6c6",
+      "name": "Webhook Upload"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst body = item.json.body || item.json || {};\nconst sessionId = body.sessionId;\nconst videoIndex = body.videoIndex || '0';\nconst totalVideos = body.totalVideos || '1';\n\nif (!sessionId) {\n  throw new Error('sessionId é obrigatório. Body recebido: ' + JSON.stringify(item.json));\n}\n\nlet videoKey = null;\nconst binary = item.binary || {};\nfor (const key of Object.keys(binary)) {\n  videoKey = key;\n  break;\n}\n\nif (!videoKey) {\n  throw new Error('Nenhum vídeo recebido. Binary keys: ' + JSON.stringify(Object.keys(binary)));\n}\n\nconst videoFile = binary[videoKey];\nconst originalName = videoFile.fileName || `video_${videoIndex}.mp4`;\n\nconst savePath = `/data/inspections/sessions/${sessionId}/${originalName}`;\n\nreturn [{\n  json: {\n    sessionId,\n    videoIndex,\n    totalVideos,\n    originalName,\n    savePath,\n    dirPath: `/data/inspections/sessions/${sessionId}`\n  },\n  binary: {\n    video: videoFile\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        256
+      ],
+      "id": "1698c27c-dfda-401d-971f-0da462ae6326",
+      "name": "Preparar Dados"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, sessionId: $json.sessionId, videoIndex: $json.videoIndex, fileName: $json.originalName }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        704,
+        256
+      ],
+      "id": "30d7ea4f-4eaf-4d93-bce6-e86f71953888",
+      "name": "Responder OK"
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepData = $('Preparar Dados').first();\n\nreturn [{\n  json: prepData.json,\n  binary: prepData.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        256
+      ],
+      "id": "239280e6-e252-4f35-9c74-e8fcd58c2982",
+      "name": "Reanexar Binário"
+    },
+    {
+      "parameters": {
+        "command": "=mkdir -p \"{{ $json.dirPath }}\" && chmod 777 \"{{ $json.dirPath }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        64,
+        256
+      ],
+      "id": "e4d9ff09-2688-4cd5-a60d-1b944a5fc91e",
+      "name": "Execute Command"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.savePath }}",
+        "dataPropertyName": "video",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        256
+      ],
+      "id": "66eb3d46-03a0-407e-a778-7693c662db71",
+      "name": "Salvar Video"
+    }
+  ],
+  "connections": {
+    "Webhook Upload": {
+      "main": [
+        [
+          {
+            "node": "Preparar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Dados": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reanexar Binário": {
+      "main": [
+        [
+          {
+            "node": "Salvar Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "Reanexar Binário",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar Video": {
+      "main": [
+        [
+          {
+            "node": "Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}

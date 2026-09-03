@@ -1,0 +1,788 @@
+{
+  "name": "VIS | Processamento de Vistorias",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vistoria-process",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1328,
+        208
+      ],
+      "id": "5948b558-4d0f-43cf-90f3-5f87fd989b3d",
+      "name": "Webhook Process"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst body = item.json.body || {};\n\nconst sessionId = body.sessionId;\nconst laudoId = `LAUDO-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;\n\nreturn [{\n  json: {\n    sessionId,\n    laudoId,\n    imovel: body.imovel || 'Não identificado',\n    tipo: body.tipo || 'entrada',\n    endereco: body.endereco || '—',\n    proprietario: body.proprietario || '—',\n    inquilino: body.inquilino || '—',\n    dataVistoria: body.dataVistoria || new Date().toISOString(),\n    obs: body.obs || '',\n    totalVideos: parseInt(body.totalVideos) || 0,\n    laudo_url: `https://inspections.example.com/laudo/${laudoId}`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1104,
+        208
+      ],
+      "id": "b4b6b8d5-4a4b-4617-be22-745d280c1129",
+      "name": "Inicializar Sessão"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'processing', laudo_url: $json.laudo_url, laudoId: $json.laudoId, message: 'Vistoria recebida. O laudo será gerado em alguns minutos.' }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -880,
+        208
+      ],
+      "id": "5fea9c43-d847-45e0-88f6-1610ac44b376",
+      "name": "Responder Imediatamente"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst sessionId = item.sessionId;\nconst sessionPath = `/data/inspections/sessions/${sessionId}`;\n\n// Criar placeholder HTML\nconst placeholderHtml = `<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<meta http-equiv=\"refresh\" content=\"30\">\n<title>Processando Laudo...</title>\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  body { font-family: 'Inter', sans-serif; background: #141416; color: #f0f0f0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }\n  .container { text-align: center; padding: 40px; max-width: 500px; }\n  .spinner { width: 64px; height: 64px; border: 3px solid #2a2a2e; border-top-color: #c9a96e; border-radius: 50%; animation: spin 1.2s linear infinite; margin: 0 auto 24px; }\n  @keyframes spin { to { transform: rotate(360deg); } }\n  h1 { font-size: 22px; margin-bottom: 12px; color: #c9a96e; }\n  p { font-size: 14px; color: #a0a0a4; line-height: 1.8; }\n  .info { margin-top: 24px; padding: 16px; background: #1e2023; border-radius: 12px; border: 1px solid #2a2a2e; }\n  .info p { font-size: 12px; color: #6a6a6e; }\n</style>\n</head>\n<body>\n<div class=\"container\">\n  <div class=\"spinner\"></div>\n  <h1>Processando Vistoria</h1>\n  <p>O laudo está sendo gerado pela IA.<br>Esta página atualiza automaticamente a cada 30 segundos.</p>\n  <div class=\"info\">\n    <p>Imóvel: ${item.imovel} · ${item.tipo}<br>Vídeos: ${item.totalVideos}<br>Início: ${new Date().toLocaleTimeString('pt-BR')}</p>\n  </div>\n</div>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    ...item,\n    sessionPath,\n    placeholderHtml\n  },\n  binary: {\n    placeholder: {\n      data: Buffer.from(placeholderHtml, 'utf8').toString('base64'),\n      mimeType: 'text/html',\n      fileName: `${item.laudoId}.html`\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -656,
+        208
+      ],
+      "id": "239f7adf-3dbd-47cc-9ec1-2c46c054b674",
+      "name": "Criar Placeholder"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/var/www/inspections/laudo/{{ $json.laudoId }}.html",
+        "dataPropertyName": "placeholder",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -448,
+        208
+      ],
+      "id": "0160d98c-b2ce-4853-aa68-73484f3854bb",
+      "name": "Salvar Placeholder HTML"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst item = $input.first().json;\nconst sessionPath = item.sessionPath;\n\n// Listar arquivos de vídeo na pasta da sessão\nlet videoFiles = [];\ntry {\n  const files = fs.readdirSync(sessionPath);\n  videoFiles = files\n    .filter(f => f.endsWith('.mp4') || f.endsWith('.mov') || f.endsWith('.avi') || f.endsWith('.webm'))\n    .sort()\n    .map(f => ({\n      fileName: f,\n      filePath: path.join(sessionPath, f)\n    }));\n} catch (e) {\n  return [{ json: { error: `Erro ao ler sessão: ${e.message}`, sessionPath } }];\n}\n\n// Criar um item para cada vídeo\nconst outputItems = videoFiles.map((vf, idx) => ({\n  json: {\n    idImovel: item.imovel,\n    imovel: item.imovel,\n    tipoVistoria: item.tipo,\n    endereco: item.endereco,\n    proprietario: item.proprietario,\n    inquilino: item.inquilino,\n    dataVistoria: item.dataVistoria,\n    observacoesGeraisWebhook: item.obs,\n    originalFileName: vf.fileName,\n    filePath: vf.filePath,\n    videoIndex: idx,\n    totalVideos: videoFiles.length,\n    laudoId: item.laudoId,\n    laudo_url: item.laudo_url,\n    sessionId: item.sessionId\n  }\n}));\n\nif (outputItems.length === 0) {\n  return [{ json: { ...item, error: 'Nenhum vídeo encontrado na sessão', videoFiles: [] } }];\n}\n\nreturn outputItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        208
+      ],
+      "id": "aa89a946-d975-4663-9877-7d9b48984d97",
+      "name": "Listar Vídeos da Sessão"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        0,
+        208
+      ],
+      "id": "a9398fdc-ce1e-4f1f-bec6-f8b95476753d",
+      "name": "Loop Over Videos"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/data/inspections/videos/{{ $json.imovel }}_{{ $json.tipoVistoria }}_{{ $json.originalFileName }}_{{ new Date().getTime() }}.mp4",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        656,
+        352
+      ],
+      "id": "579fc97f-2725-4905-8911-4a9f50dea764",
+      "name": "Salvar video na VPS"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/upload/v1beta/files",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Goog-Upload-Protocol",
+              "value": "raw"
+            },
+            {
+              "name": "Content-Type",
+              "value": "video/mp4"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        880,
+        352
+      ],
+      "id": "45be2273-747b-4092-bb19-cdb8d128510b",
+      "name": "Upload para Gemini File API",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_N8N_CREDENTIAL_ID",
+          "name": "Gemini API Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [\n      {\n        \"fileData\": {\n          \"mimeType\": \"video/mp4\",\n          \"fileUri\": \"{{ $('Upload para Gemini File API').item.json.file.uri }}\"\n        }\n      },\n      {\n        \"text\": \"Você é um inspetor técnico de imóveis altamente experiente e detalhista, especializado em vistorias de entrada e saída no mercado imobiliário brasileiro. Sua tarefa é analisar este vídeo de vistoria e extrair TODAS as informações visíveis e narradas sobre o estado do imóvel, seguindo rigorosamente as regras abaixo para um laudo profissional.\\n\\n## OBJETIVO DA ANÁLISE\\nDescrever exclusivamente os elementos que fazem parte da infraestrutura, acabamento, instalações e mobiliário fixo do imóvel, registrando o estado de conservação de cada item observado. A descrição deve ser adequada para um laudo de vistoria imobiliária profissional.\\n\\n## IDENTIFICAÇÃO DE AMBIENTES\\n- Identifique a transição entre ambientes pela narração do vistoriador (quando ele diz \\\"agora vamos para...\\\", \\\"estamos no/na...\\\", \\\"aqui é o/a...\\\") OU pela mudança visual de ambiente (passagem por porta, corredor, mudança de revestimento de piso/parede).\\n- Cada ambiente DEVE ser um objeto separado no array \\\"comodos\\\".\\n- Se o vídeo mostra apenas um ambiente, retorne array com 1 item.\\n- Use nomes padronizados e ÚNICOS: Sala de Estar, Sala de Jantar, Copa, Cozinha, Área de Serviço, Banheiro Social, Banheiro Suíte, Banheiro, Quarto 1, Quarto 2, Quarto 3, Suíte, Varanda, Hall de Entrada, Corredor Interno, Corredor Externo, Garagem, Lavabo, Despensa, Área Externa (Frente), Área Externa (Fundos), Quintal.\\n- Se houver apenas UM banheiro no imóvel, nomeie como \\\"Banheiro\\\". Se houver dois, use \\\"Banheiro Social\\\" e \\\"Banheiro Suíte\\\" (ou \\\"Banheiro 1\\\" e \\\"Banheiro 2\\\").\\n\\n## REGRAS CRÍTICAS PARA NOMEAÇÃO DE AMBIENTES\\n1. NUNCA repita o mesmo nome de ambiente. Cada entrada no array \\\"comodos\\\" DEVE ter um nome único.\\n2. Se o vídeo retorna a um ambiente já visitado anteriormente, NÃO crie uma nova entrada. Adicione os itens observados à entrada já existente daquele ambiente.\\n3. Se houver dois cômodos com a mesma função (ex: duas salas), diferencie-os obrigatoriamente: \\\"Sala de Estar\\\" e \\\"Sala de Jantar\\\", ou \\\"Sala de Estar (Frente)\\\" e \\\"Sala de Estar (Fundos)\\\".\\n4. Para áreas grandes com subdivisões (garagem, área externa), agrupe tudo em UM ÚNICO ambiente. Use \\\"Garagem\\\" para englobar área interna, piso externo e rampa. Use \\\"Área Externa\\\" para englobar calçada, muros e fachada. Diferencie os sub-elementos dentro dos itens, não criando ambientes separados.\\n5. Se o vistoriador filma o mesmo cômodo em dois momentos diferentes do vídeo, CONSOLIDE em uma única entrada com todos os itens observados em ambos os momentos.\\n6. Antes de finalizar, REVISE o array \\\"comodos\\\" e verifique que não há nomes duplicados, que cada ambiente aparece apenas UMA vez, e que ambientes similares têm nomes diferenciados.\\n\\n## ELEMENTOS A INSPECIONAR EM CADA AMBIENTE\\nPara cada ambiente, inspecione e descreva os seguintes elementos, aplicando os critérios de descrição:\\n\\n### Estrutura e acabamentos\\n- Piso: tipo (cerâmica, porcelanato, laminado, vinílico, cimento, madeira), cor, estado, rejunte, desníveis\\n- Rodapés: material, cor, estado\\n- Paredes: tipo de acabamento (pintura, azulejo, papel de parede, textura), cor, estado\\n- Pintura: cor, estado, manchas, trincas, bolhas, mofo\\n- Revestimentos: tipo (azulejo, pastilha), cor, estado, rejunte, avarias\\n- Teto e forro: tipo (laje, gesso, PVC), cor, estado\\n- Gesso: estado, trincas, manchas de infiltração\\n- Lajes: estado, trincas, manchas de infiltração\\n- Escadas: material, estado, corrimãos\\n- Corrimãos: material, estado\\n- Soleiras: material, estado\\n- Peitoris: material, estado\\n\\n### Esquadrias\\n- Portas: quantidade, tipo (madeira, alumínio, vidro), cor, estado, dobradiças, fechadura, funcionamento, batentes, guarnições\\n- Batentes: material, estado\\n- Guarnições: material, estado\\n- Fechaduras: tipo, estado, funcionamento\\n- Janelas: quantidade, tipo (alumínio, madeira, blindex), cor, estado, trilhos, fechamento, vedação, venezianas\\n- Venezianas: tipo, estado, funcionamento\\n- Portões: tipo, material, estado, funcionamento\\n- Grades: material, estado\\n\\n### Instalações elétricas\\n- Interruptores: quantidade visível, estado, funcionamento se testado\\n- Tomadas: quantidade visível, estado, funcionamento se testado\\n- Espelhos: estado\\n- Luminárias: tipo, estado, funcionamento se testado\\n- Plafons: tipo, estado, funcionamento se testado\\n- Lustres fixos: tipo, estado, funcionamento se testado\\n- Disjuntores aparentes: quantidade visível, estado\\n\\n### Instalações hidráulicas\\n- Torneiras: tipo, estado, vazamentos, funcionamento se demonstrado\\n- Registros: tipo, estado, vazamentos, funcionamento se demonstrado\\n- Chuveiros: tipo, estado, funcionamento se demonstrado\\n- Duchas: tipo, estado, funcionamento se demonstrado\\n- Cubas: material, estado, vazamentos\\n- Pias: material, estado, vazamentos\\n- Tanques: material, estado, vazamentos\\n- Vasos sanitários: tipo, estado, funcionamento da descarga\\n- Caixas acopladas: estado, funcionamento\\n\\n### Móveis e itens permanentes\\n- Armários planejados: material, estado, dobradiças, puxadores\\n- Guarda-roupas embutidos: material, estado, dobradiças, puxadores\\n- Gabinetes: material, estado, dobradiças, puxadores\\n- Balcões: material, estado\\n- Bancadas: material, estado\\n- Painéis fixos: material, estado\\n- Nichos: material, estado\\n- Prateleiras fixas: material, estado\\n- Coifas: estado, funcionamento\\n- Cooktops: estado, funcionamento\\n- Fornos embutidos: estado, funcionamento\\n- Ar-condicionado instalado: estado, funcionamento\\n- Box de banheiro: material, estado, funcionamento\\n- Espelhos fixados: estado\\n\\n### Áreas externas\\n- Calçadas: tipo, estado, trincas, desníveis\\n- Muros: tipo, estado, trincas, mofo\\n- Cercas: material, estado\\n- Quintal: tipo de piso/revestimento, estado\\n- Jardim estrutural: estado (se houver elementos fixos como canteiros, decks)\\n- Piscina: estado (estrutura, revestimento, equipamentos fixos)\\n- Churrasqueira: material, estado, funcionamento\\n- Pergolados: material, estado\\n- Coberturas: tipo, estado\\n\\n## NÃO DESCREVER\\nIgnore completamente e NÃO mencione:\\n- Objetos pessoais (roupas, sapatos, bolsas, mochilas, etc.)\\n- Utensílios de cozinha soltos (copos, pratos, talheres, panelas, alimentos, garrafas)\\n- Produtos de limpeza, papel higiênico, toalhas\\n- Itens decorativos temporários (flores, bandeiras, laços, brinquedos)\\n- Equipamentos eletrônicos portáteis ou objetos temporários\\n- Qualquer item sem relevância para a infraestrutura, acabamento, instalações ou mobiliário fixo de uma vistoria imobiliária.\\n\\n## CRITÉRIO DE DESCRIÇÃO\\nPara CADA item inspecionado, priorize e inclua na observação:\\n1. Estado de conservação (usando a escala abaixo).\\n2. Material do item.\\n3. Cor predominante.\\n4. Existência de avarias (descreva a natureza e, se possível, a dimensão aproximada).\\n5. Existência de desgastes.\\n6. Existência de manchas.\\n7. Existência de rachaduras.\\n8. Existência de infiltrações.\\n9. Existência de quebras.\\n10. Existência de oxidação ou ferrugem.\\n\\n## ESCALA DE ESTADO DE CONSERVAÇÃO\\n- \\\"Novo\\\": Item claramente recém-instalado, sem qualquer marca de uso\\n- \\\"Bom\\\": Item funcional com uso normal, sem danos\\n- \\\"Regular\\\": Item funcional mas com desgaste visível, pequenos danos estéticos\\n- \\\"Ruim\\\": Item com danos evidentes que afetam estética ou funcionamento parcial\\n- \\\"Danificado\\\": Item quebrado, inutilizável ou com dano estrutural grave\\n\\n## TIMESTAMPS\\n- Registre o momento aproximado (formato MM:SS) em que cada item aparece no vídeo.\\n\\n## RETORNE O JSON EXATAMENTE NESTE FORMATO:\\n{\\n  \\\"comodos\\\": [\\n    {\\n      \\\"nome\\\": \\\"Nome do Ambiente\\\",\\n      \\\"timestamp_inicio\\\": \\\"MM:SS\\\",\\n      \\\"timestamp_fim\\\": \\\"MM:SS\\\",\\n      \\\"itens\\\": [\\n        {\\n          \\\"item\\\": \\\"nome do elemento\\\",\\n          \\\"categoria\\\": \\\"piso|parede|teto|porta|janela|eletrica|hidraulica|mobiliario|outro\\\",\\n          \\\"tipo\\\": \\\"material/tipo específico\\\",\\n          \\\"cor\\\": \\\"cor observada\\\",\\n          \\\"estado\\\": \\\"Novo|Bom|Regular|Ruim|Danificado\\\",\\n          \\\"observacoes\\\": \\\"descrição detalhada e técnica\\\",\\n          \\\"timestamp_aproximado\\\": \\\"MM:SS\\\"\\n        }\\n      ]\\n    }\\n  ],\\n  \\\"observacoes_gerais\\\": \\\"resumo técnico do estado geral do imóvel\\\",\\n  \\\"problemas_criticos\\\": [\\\"lista de problemas graves\\\"]\\n}\\n\\n## INSTRUÇÕES OBRIGATÓRIAS:\\n- Retorne APENAS o JSON puro, sem markdown, sem crases.\\n- Seja extremamente detalhista.\\n- VERIFIQUE que nenhum nome de ambiente está duplicado no array comodos antes de retornar.\"\n      }\n    ]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.1,\n    \"maxOutputTokens\": 16384\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        352
+      ],
+      "id": "4df6a6f2-c409-4907-ac3c-008d00d147b5",
+      "name": "Enviar prompt para Gemini",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_N8N_CREDENTIAL_ID",
+          "name": "Gemini API Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\n\nlet textoGemini = '';\nif (response.candidates && response.candidates[0]?.content?.parts[0]?.text) {\n  textoGemini = response.candidates[0].content.parts[0].text;\n}\n\nlet jsonText = textoGemini.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\nlet dadosVistoria;\ntry {\n  dadosVistoria = JSON.parse(jsonText);\n} catch (e) {\n  dadosVistoria = {\n    comodos: [],\n    observacoes_gerais: 'Erro ao parsear: ' + e.message,\n    problemas_criticos: [],\n    parse_error: true\n  };\n}\n\nif (dadosVistoria.comodos && dadosVistoria.comodos.length > 0) {\n  const comodosMesclados = {};\n\n  for (const comodo of dadosVistoria.comodos) {\n    const nome = comodo.nome;\n\n    if (comodosMesclados[nome]) {\n      comodosMesclados[nome].itens = [\n        ...comodosMesclados[nome].itens,\n        ...comodo.itens\n      ];\n      if (comodo.timestamp_fim > comodosMesclados[nome].timestamp_fim) {\n        comodosMesclados[nome].timestamp_fim = comodo.timestamp_fim;\n      }\n    } else {\n      comodosMesclados[nome] = { ...comodo };\n    }\n  }\n\n  dadosVistoria.comodos = Object.values(comodosMesclados);\n}\n\nconst prevData = $('Limpar Binário').first().json;\n\nreturn [{\n  json: {\n    imovel: prevData.imovel || '',\n    tipoVistoria: prevData.tipoVistoria || '',\n    endereco: prevData.endereco || '',\n    proprietario: prevData.proprietario || '',\n    inquilino: prevData.inquilino || '',\n    dataVistoria: prevData.dataVistoria || '',\n    observacoesGeraisWebhook: prevData.observacoesGeraisWebhook || '',\n    originalFileName: prevData.originalFileName || '',\n    laudoId: prevData.laudoId || '',\n    laudo_url: prevData.laudo_url || '',\n    resultado_analise: dadosVistoria\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1952,
+        352
+      ],
+      "id": "ae578420-5113-428c-958c-665b84c6af68",
+      "name": "Processar Resposta Gemini"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputItem = $input.first().json;\nconst dadosAnalise = inputItem.resultado_analise || {};\n\nconst prompt = `Você é um especialista em laudos de vistorias imobiliárias no Brasil. Recebeu os dados brutos extraídos por IA de um vídeo de vistoria.\n\nSua tarefa é:\n1. **DEDUPLICAR AMBIENTES**: Se houver dois ou mais ambientes com o mesmo nome ou nomes muito similares (ex: \"Sala de Estar\" aparecendo 2x, ou \"Banheiro\" e \"Banheiro Social\" descrevendo o MESMO cômodo), MESCLE-OS em uma única entrada, consolidando todos os itens.\n2. **CONSOLIDAR GARAGEM/ÁREA EXTERNA**: Se a garagem estiver dividida em múltiplas entradas (interior, piso externo, rampa), unifique em um único ambiente \"Garagem\" com todos os itens listados.\n3. Revisar e padronizar a linguagem (formal, técnica, clara)\n4. Corrigir inconsistências na classificação de estados\n5. Garantir que as descrições sejam objetivas e juridicamente úteis\n6. Formatar o texto final de forma padronizada\n\nREGRAS DE DEDUPLICAÇÃO:\n- Se dois ambientes têm o mesmo nome → mesclar em um só, somando os itens\n- Se dois ambientes descrevem claramente o MESMO espaço físico (mesmo piso, mesmas paredes) → mesclar\n- Se são espaços DIFERENTES com nome similar → renomear para diferenciar (ex: \"Sala de Estar (Frente)\" e \"Sala de TV (Fundos)\")\n- O array final \"comodos\" NÃO PODE ter nomes duplicados\n\nDados brutos:\n${JSON.stringify(dadosAnalise)}\n\nRetorne o JSON refinado mantendo a MESMA ESTRUTURA. Retorne APENAS o JSON, sem markdown.`;\n\nreturn [{\n  json: {\n    ...inputItem,\n    gemini_refinement_body: {\n      contents: [{ role: 'user', parts: [{ text: prompt }] }],\n      generationConfig: { temperature: 0.2, maxOutputTokens: 65536 }\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2176,
+        352
+      ],
+      "id": "36a6d80b-34cc-43c1-b3b4-5da3e92ec5be",
+      "name": "Preparar Refinamento"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2384,
+        352
+      ],
+      "id": "2e942575-3f92-4a66-8bc9-ec50ef1d39be",
+      "name": "Wait"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.gemini_refinement_body) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2608,
+        352
+      ],
+      "id": "7d0481c5-bf11-489b-92c3-66a130ba46ab",
+      "name": "Gemini Refinamento",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_N8N_CREDENTIAL_ID",
+          "name": "Gemini API Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst prevData = $('Preparar Refinamento').first().json;\n\nlet textoRefinado = '';\nif (response.candidates && response.candidates[0]?.content?.parts[0]?.text) {\n  textoRefinado = response.candidates[0].content.parts[0].text;\n}\n\nlet jsonText = textoRefinado.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\nlet laudoRefinado;\ntry {\n  laudoRefinado = JSON.parse(jsonText);\n} catch (e) {\n  laudoRefinado = prevData.resultado_analise || { comodos: [], observacoes_gerais: '', problemas_criticos: [] };\n}\n\nreturn [{\n  json: {\n    imovel: prevData.imovel,\n    tipoVistoria: prevData.tipoVistoria,\n    endereco: prevData.endereco,\n    proprietario: prevData.proprietario,\n    inquilino: prevData.inquilino,\n    dataVistoria: prevData.dataVistoria,\n    observacoesGeraisWebhook: prevData.observacoesGeraisWebhook,\n    originalFileName: prevData.originalFileName,\n    laudoId: prevData.laudoId,\n    laudo_url: prevData.laudo_url,\n    dados_refinados: laudoRefinado\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2832,
+        352
+      ],
+      "id": "3328c1ea-3ecb-4dfb-af0b-4239cbc4cd2d",
+      "name": "Processar Refinamento"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Salvar resultado do vídeo e voltar ao loop\nconst item = $input.first().json;\n\nreturn [{ json: item }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3056,
+        352
+      ],
+      "id": "901353ca-4771-4754-9a72-b749270f0376",
+      "name": "Salvar Resultado Vídeo"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Consolidar todos os resultados dos vídeos processados\nconst allItems = $input.all();\n\nconst firstItem = allItems[0].json;\nconst laudoId = firstItem.laudoId;\nconst laudo_url = firstItem.laudo_url;\n\nlet finalLaudo = {\n  laudo_id: laudoId,\n  imovel: firstItem.imovel,\n  tipoVistoria: firstItem.tipoVistoria,\n  dataVistoria: firstItem.dataVistoria,\n  data_processamento: new Date().toISOString(),\n  endereco: firstItem.endereco,\n  proprietario: firstItem.proprietario,\n  inquilino: firstItem.inquilino,\n  laudo_url: laudo_url,\n  observacoes_gerais: '',\n  problemas_criticos: [],\n  dados_refinados: { comodos: [] }\n};\n\nconst obsSet = new Set();\nconst probSet = new Set();\n\nallItems.forEach(item => {\n  const dados = item.json.dados_refinados;\n  if (dados) {\n    if (dados.comodos) {\n      finalLaudo.dados_refinados.comodos = finalLaudo.dados_refinados.comodos.concat(dados.comodos);\n    }\n    if (dados.observacoes_gerais && dados.observacoes_gerais.trim()) {\n      obsSet.add(dados.observacoes_gerais.trim());\n    }\n    if (dados.problemas_criticos) {\n      dados.problemas_criticos.forEach(p => probSet.add(p));\n    }\n  }\n});\n\nfinalLaudo.observacoes_gerais = Array.from(obsSet).join('; ');\nfinalLaudo.problemas_criticos = Array.from(probSet);\nfinalLaudo.dados_refinados.observacoes_gerais = finalLaudo.observacoes_gerais;\nfinalLaudo.dados_refinados.problemas_criticos = finalLaudo.problemas_criticos;\n\nreturn [{ json: finalLaudo }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6e4f73e0-cc20-4353-aa35-a73ea58e870b",
+      "name": "Consolidar Laudo Final"
+    },
+    {
+      "parameters": {
+        "jsCode": "// COPIA EXATA do nó 'Gerar HTML do Laudo' do workflow original\n// (o mesmo código que já existe - vou referenciar)\nconst laudoData = $input.first().json;\nconst dados = laudoData.dados_refinados;\nconst laudoId = laudoData.laudo_id;\nconst imovel = laudoData.imovel || 'Imóvel não identificado';\nconst tipoVistoria = laudoData.tipoVistoria || 'entrada';\nconst dataVistoria = laudoData.dataVistoria;\nconst dataProcessamento = laudoData.data_processamento;\n\nconst THEME = 'dark';\nconst LOGO_URL = 'https://example.com/assets/company-logo.png';\nconst COMPANY_NAME = 'Example Real Estate Company';\n\nconst dataObj = new Date(dataVistoria);\nconst dataFormatada = dataObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });\nconst dataFormatadaCurta = dataObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });\nconst dataGeracao = new Date(dataProcessamento).toLocaleDateString('pt-BR');\nconst horaGeracao = new Date(dataProcessamento).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });\n\nconst endereco = laudoData.endereco || '—';\nconst proprietario = laudoData.proprietario || '—';\nconst inquilino = laudoData.inquilino || '—';\n\nconst totalComodos = dados.comodos ? dados.comodos.length : 0;\nlet totalItens = 0, itensProblematicos = 0, itensBom = 0, itensRegular = 0, itensNovo = 0;\nif (dados.comodos) {\n  dados.comodos.forEach(c => {\n    if (c.itens) {\n      totalItens += c.itens.length;\n      c.itens.forEach(i => {\n        const estado = (i.estado || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n        if (['ruim', 'critico', 'pessimo', 'danificado'].includes(estado)) itensProblematicos++;\n        else if (['bom'].includes(estado)) itensBom++;\n        else if (['regular', 'incompleto'].includes(estado)) itensRegular++;\n        else if (['novo'].includes(estado)) itensNovo++;\n      });\n    }\n  });\n}\nconst totalProblemas = dados.problemas_criticos ? dados.problemas_criticos.length : 0;\nconst score = totalItens > 0 ? Math.max(0, Math.min(100, Math.round(((totalItens - itensProblematicos) / totalItens) * 100))) : 100;\n\n// Simplified HTML generation (same structure as original)\nconst tipoLabel = tipoVistoria.charAt(0).toUpperCase() + tipoVistoria.slice(1);\nconst scoreColor = score >= 80 ? '#4ade80' : score >= 60 ? '#fbbf24' : '#f87171';\nconst laudoUrl = `https://inspections.example.com/laudo/${laudoId}`;\nconst qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(laudoUrl)}&bgcolor=1e2023&color=f0f0f0&format=png`;\n\nfunction getBadge(estado) {\n  if (!estado) return '<span style=\"padding:3px 10px;border-radius:6px;font-size:9px;font-weight:700;background:rgba(108,117,125,0.12);color:#9ca3af;\">N/D</span>';\n  const e = estado.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n  let bg, color;\n  if (e === 'novo') { bg = 'rgba(74,222,128,0.12)'; color = '#4ade80'; }\n  else if (e === 'bom') { bg = 'rgba(96,165,250,0.12)'; color = '#60a5fa'; }\n  else if (e === 'regular' || e === 'incompleto') { bg = 'rgba(251,191,36,0.12)'; color = '#fbbf24'; }\n  else if (e === 'ruim') { bg = 'rgba(251,146,60,0.12)'; color = '#fb923c'; }\n  else { bg = 'rgba(248,113,113,0.12)'; color = '#f87171'; }\n  return `<span style=\"padding:3px 10px;border-radius:6px;font-size:9px;font-weight:700;background:${bg};color:${color};text-transform:uppercase;\">${estado}</span>`;\n}\n\nlet comodosHtml = '';\nif (dados.comodos) {\n  dados.comodos.forEach(comodo => {\n    comodosHtml += `<div style=\"margin-bottom:28px;page-break-inside:avoid;\">`;\n    comodosHtml += `<div style=\"padding:14px 18px;background:#252528;border-radius:12px 12px 0 0;color:#fff;\"><span style=\"font-size:14px;font-weight:700;\">${comodo.nome || 'Ambiente'}</span><span style=\"margin-left:auto;font-size:11px;background:rgba(255,255,255,0.1);padding:4px 12px;border-radius:20px;float:right;\">${comodo.itens ? comodo.itens.length : 0} itens</span></div>`;\n    if (comodo.itens && comodo.itens.length > 0) {\n      comodo.itens.forEach((item, i) => {\n        const isLast = i === comodo.itens.length - 1;\n        const obs = item.observacoes || '';\n        comodosHtml += `<div style=\"border:1px solid #2a2a2e;border-top:none;padding:16px 20px;background:#1a1a1e;${isLast ? 'border-radius:0 0 12px 12px;' : ''}\">`;\n        comodosHtml += `<div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:${obs ? '10px' : '0'};flex-wrap:wrap;gap:8px;\">`;\n        comodosHtml += `<span style=\"font-size:13px;font-weight:700;color:#f0f0f0;\">${item.item || '—'}</span>`;\n        comodosHtml += `<div style=\"display:flex;gap:6px;align-items:center;\">`;\n        if (item.tipo || item.cor) comodosHtml += `<span style=\"font-size:10px;color:#6a6a6e;font-style:italic;\">${[item.tipo, item.cor].filter(Boolean).join(' · ')}</span>`;\n        comodosHtml += getBadge(item.estado);\n        comodosHtml += `</div></div>`;\n        if (obs) comodosHtml += `<div style=\"font-size:11px;color:#a0a0a4;line-height:1.7;padding:10px 14px;background:rgba(201,169,110,0.12);border-radius:8px;border-left:3px solid #c9a96e;\">${obs}</div>`;\n        comodosHtml += `</div>`;\n      });\n    }\n    comodosHtml += `</div>`;\n  });\n}\n\nlet problemasHtml = '';\nif (dados.problemas_criticos && dados.problemas_criticos.length > 0) {\n  problemasHtml = `<div style=\"margin-bottom:28px;\"><div style=\"padding:20px 24px;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);border-radius:12px;\">`;\n  dados.problemas_criticos.forEach(p => {\n    problemasHtml += `<div style=\"display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #2a2a2e;align-items:flex-start;\"><div style=\"width:28px;height:28px;background:rgba(248,113,113,0.12);color:#f87171;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;\">!</div><div style=\"font-size:12px;color:#a0a0a4;line-height:1.7;padding-top:5px;\">${p}</div></div>`;\n  });\n  problemasHtml += `</div></div>`;\n}\n\nconst htmlTemplate = `<!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"><title>Laudo de Vistoria - ${imovel}</title><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter',sans-serif;background:#141416;color:#f0f0f0;line-height:1.5;-webkit-print-color-adjust:exact}@page{size:A4;margin:0}.page-wrapper{max-width:100%}.gold-bar{height:3px;background:linear-gradient(90deg,#c9a96e,#d4b878,#c9a96e)}</style></head><body><div class=\"page-wrapper\"><div style=\"background:linear-gradient(135deg,#0d0d0f,#1e2023,#252528);padding:40px 48px;position:relative;\"><div style=\"display:flex;justify-content:space-between;align-items:flex-start;\"><div><img src=\"${LOGO_URL}\" alt=\"Logo\" style=\"width:48px;height:48px;margin-bottom:14px;border-radius:50%;\"><div style=\"font-size:22px;font-weight:800;color:#fff;margin-bottom:4px;\">Laudo de Vistoria</div><div style=\"font-size:12px;color:rgba(255,255,255,0.5);\">Vistoria de ${tipoLabel} · ${dataFormatada}</div></div><div style=\"text-align:right;\"><div style=\"display:inline-block;padding:6px 14px;background:rgba(201,169,110,0.15);border:1px solid rgba(201,169,110,0.3);border-radius:20px;font-size:10px;font-weight:600;color:#d4b878;text-transform:uppercase;margin-bottom:10px;\">Documento Oficial</div><div style=\"font-size:10px;color:rgba(255,255,255,0.3);font-family:monospace;\">ID: ${laudoId}</div></div></div></div><div class=\"gold-bar\"></div><div style=\"padding:40px 48px;background:#1a1a1e;\"><div style=\"display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:32px;\"><div style=\"padding:14px 18px;background:#252528;border-radius:10px;border:1px solid #2a2a2e;\"><div style=\"font-size:9px;font-weight:700;color:#6a6a6e;text-transform:uppercase;margin-bottom:4px;\">Código</div><div style=\"font-size:14px;font-weight:600;color:#f0f0f0;\">${imovel}</div></div><div style=\"padding:14px 18px;background:#252528;border-radius:10px;border:1px solid #2a2a2e;\"><div style=\"font-size:9px;font-weight:700;color:#6a6a6e;text-transform:uppercase;margin-bottom:4px;\">Tipo</div><div style=\"font-size:14px;font-weight:600;color:#f0f0f0;\">${tipoLabel}</div></div><div style=\"padding:14px 18px;background:#252528;border-radius:10px;border:1px solid #2a2a2e;grid-column:1/-1;\"><div style=\"font-size:9px;font-weight:700;color:#6a6a6e;text-transform:uppercase;margin-bottom:4px;\">Endereço</div><div style=\"font-size:14px;font-weight:600;color:#f0f0f0;\">${endereco}</div></div><div style=\"padding:14px 18px;background:#252528;border-radius:10px;border:1px solid #2a2a2e;\"><div style=\"font-size:9px;font-weight:700;color:#6a6a6e;text-transform:uppercase;margin-bottom:4px;\">Proprietário</div><div style=\"font-size:14px;font-weight:600;color:#f0f0f0;\">${proprietario}</div></div><div style=\"padding:14px 18px;background:#252528;border-radius:10px;border:1px solid #2a2a2e;\"><div style=\"font-size:9px;font-weight:700;color:#6a6a6e;text-transform:uppercase;margin-bottom:4px;\">Inquilino/Comprador</div><div style=\"font-size:14px;font-weight:600;color:#f0f0f0;\">${inquilino}</div></div></div><div style=\"display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;\"><div style=\"padding:20px;background:#252528;border-radius:12px;border:1px solid #2a2a2e;text-align:center;\"><div style=\"font-size:32px;font-weight:800;color:#f0f0f0;\">${totalComodos}</div><div style=\"font-size:10px;color:#6a6a6e;text-transform:uppercase;\">Ambientes</div></div><div style=\"padding:20px;background:#252528;border-radius:12px;border:1px solid #2a2a2e;text-align:center;\"><div style=\"font-size:32px;font-weight:800;color:#f0f0f0;\">${totalItens}</div><div style=\"font-size:10px;color:#6a6a6e;text-transform:uppercase;\">Itens</div></div><div style=\"padding:20px;background:rgba(248,113,113,0.12);border-radius:12px;border:1px solid rgba(248,113,113,0.3);text-align:center;\"><div style=\"font-size:32px;font-weight:800;color:#f87171;\">${totalProblemas}</div><div style=\"font-size:10px;color:#f87171;text-transform:uppercase;\">Problemas</div></div><div style=\"padding:20px;background:#252528;border-radius:12px;border:1px solid #2a2a2e;text-align:center;\"><div style=\"font-size:32px;font-weight:800;color:${scoreColor};\">${score}%</div><div style=\"font-size:10px;color:#6a6a6e;text-transform:uppercase;\">Score</div></div></div>${problemasHtml}${comodosHtml}${laudoData.observacoes_gerais ? `<div style=\"margin-bottom:28px;\"><div style=\"padding:20px 24px;background:#252528;border:1px solid #2a2a2e;border-radius:12px;border-left:4px solid #c9a96e;\"><p style=\"font-size:13px;line-height:1.8;color:#a0a0a4;\">${laudoData.observacoes_gerais}</p></div></div>` : ''}<div style=\"margin-top:48px;padding-top:24px;border-top:1px solid #2a2a2e;display:flex;justify-content:space-between;align-items:flex-end;\"><div><div style=\"font-size:13px;font-weight:600;color:#f0f0f0;margin-bottom:4px;\">${COMPANY_NAME}</div><div style=\"font-size:11px;color:#6a6a6e;line-height:1.8;\">Mogi Guaçu/SP · (19) 3818-2479<br>${dataGeracao} às ${horaGeracao} · ID: ${laudoId}</div></div><div style=\"text-align:center;\"><img src=\"${qrCodeUrl}\" width=\"80\" height=\"80\" style=\"border-radius:8px;\"><div style=\"font-size:9px;color:#6a6a6e;margin-top:6px;\">VERIFICAÇÃO</div></div></div></div></div></body></html>`;\n\nreturn [{\n  json: {\n    ...laudoData,\n    html_laudo: htmlTemplate,\n    laudo_url: laudoUrl,\n    score\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "6a37da60-fee9-4bbd-90f6-4f3d45b46be3",
+      "name": "Gerar HTML do Laudo"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst htmlContent = item.json.html_laudo;\nconst jsonContent = JSON.stringify(item.json, null, 2);\n\nreturn [{\n  json: item.json,\n  binary: {\n    html_file: {\n      data: Buffer.from(htmlContent, 'utf8').toString('base64'),\n      mimeType: 'text/html',\n      fileName: `${item.json.laudo_id}.html`\n    },\n    json_file: {\n      data: Buffer.from(jsonContent, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: `${item.json.laudo_id}.json`\n    },\n    data: {\n      data: Buffer.from(htmlContent, 'utf8').toString('base64'),\n      mimeType: 'text/html',\n      fileName: 'index.html'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        0
+      ],
+      "id": "d5b0329a-17e0-451d-b8ba-db2a97bd2545",
+      "name": "HTML para Binário"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/var/www/inspections/laudo/{{ $json.laudo_id }}.html",
+        "dataPropertyName": "html_file",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        0
+      ],
+      "id": "7e909bf3-1b35-4b65-8ed9-2afd1a01c9b7",
+      "name": "Salvar HTML Público"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/data/inspections/laudos/{{ $json.laudo_id }}.json",
+        "dataPropertyName": "json_file",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1088,
+        0
+      ],
+      "id": "5e4ba356-b404-4cd1-975a-df9b9ee77997",
+      "name": "Salvar JSON"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://gotenberg:3000/forms/chromium/convert/html",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "files",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "paperWidth",
+              "value": "8.27"
+            },
+            {
+              "name": "paperHeight",
+              "value": "11.69"
+            },
+            {
+              "name": "marginTop",
+              "value": "0"
+            },
+            {
+              "name": "marginBottom",
+              "value": "0"
+            },
+            {
+              "name": "marginLeft",
+              "value": "0"
+            },
+            {
+              "name": "marginRight",
+              "value": "0"
+            },
+            {
+              "name": "printBackground",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        0
+      ],
+      "id": "83e93a82-f8e9-4044-8a21-107d95d37829",
+      "name": "Gerar PDF"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/data/inspections/pdfs/LAUDO_{{ $('Consolidar Laudo Final').item.json.laudo_id }}.pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1952,
+        0
+      ],
+      "id": "cca4bc14-43fc-4a0e-acc3-4a402dcb7cc9",
+      "name": "Salvar PDF"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Limpar arquivos da sessão após processamento\nconst fs = require('fs');\nconst path = require('path');\nconst item = $input.first().json;\nconst sessionId = $('Inicializar Sessão').first().json.sessionId;\nconst sessionPath = `/data/inspections/sessions/${sessionId}`;\n\ntry {\n  const files = fs.readdirSync(sessionPath);\n  files.forEach(f => fs.unlinkSync(path.join(sessionPath, f)));\n  fs.rmdirSync(sessionPath);\n} catch(e) { /* ignore */ }\n\nreturn [{ json: { done: true, laudo_id: item.laudo_id || $('Consolidar Laudo Final').first().json.laudo_id } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2176,
+        0
+      ],
+      "id": "5b373ec6-4fe5-4d4a-90be-190d3593206e",
+      "name": "Limpar Sessão"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fileUri = $input.first().json.file.uri;\nconst fileName = $input.first().json.file.name;\n\n// ⚠️ COLOQUE SUA API KEY REAL AQUI\nconst apiKey = $env.GEMINI_API_KEY;\n\nconst maxAttempts = 60; // máximo 60 tentativas (5 min total)\nconst delayMs = 5000;\n\nfor (let i = 0; i < maxAttempts; i++) {\n  let response;\n  \n  try {\n    response = await this.helpers.httpRequest({\n      method: 'GET',\n      url: `https://generativelanguage.googleapis.com/v1beta/${fileName}?key=${apiKey}`,\n      timeout: 10000, // timeout de 10 segundos\n    });\n  } catch (error) {\n    // Se deu erro na requisição, loga e tenta novamente\n    if (i >= maxAttempts - 1) {\n      throw new Error(`Polling falhou após ${maxAttempts} tentativas. Último erro: ${error.message}`);\n    }\n    await new Promise(resolve => setTimeout(resolve, delayMs));\n    continue;\n  }\n\n  // Verificar o state (pode estar em response.state ou response.file.state)\n  const state = response?.state || response?.file?.state;\n\n  if (state === 'ACTIVE') {\n    return [{\n      json: {\n        ...$input.first().json,\n        fileState: 'ACTIVE',\n        attempts: i + 1\n      }\n    }];\n  }\n\n  if (state === 'FAILED') {\n    throw new Error(`Processamento falhou no Gemini: ${JSON.stringify(response)}`);\n  }\n\n  // Se state é undefined/null (resposta inesperada), logar e sair\n  if (!state) {\n    throw new Error(`Resposta inesperada da API (state undefined). Response: ${JSON.stringify(response).substring(0, 500)}`);\n  }\n\n  // state é PROCESSING, aguardar\n  await new Promise(resolve => setTimeout(resolve, delayMs));\n}\n\nthrow new Error(`Arquivo não ficou ACTIVE após ${maxAttempts} tentativas (${maxAttempts * delayMs / 1000}s)`);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        352
+      ],
+      "id": "630e417d-f0d2-4bba-a676-6532b3829379",
+      "name": "Aguardar Processamento1"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.filePath }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        352
+      ],
+      "id": "74459bc1-2b65-4808-bbc0-a1c10ffdfe43",
+      "name": "Ler Video do Disco"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Nó: \"Limpar Binário\" - após upload, remove dados pesados\nconst item = $input.first();\nconst json = item.json;\n\n// Manter apenas os dados necessários do upload\nreturn [{\n  json: {\n    file: json.file, // resposta do Gemini (uri, name, state)\n    imovel: $('Listar Vídeos da Sessão').first().json.imovel,\n    tipoVistoria: $('Listar Vídeos da Sessão').first().json.tipoVistoria,\n    endereco: $('Listar Vídeos da Sessão').first().json.endereco,\n    proprietario: $('Listar Vídeos da Sessão').first().json.proprietario,\n    inquilino: $('Listar Vídeos da Sessão').first().json.inquilino,\n    dataVistoria: $('Listar Vídeos da Sessão').first().json.dataVistoria,\n    observacoesGeraisWebhook: $('Listar Vídeos da Sessão').first().json.observacoesGeraisWebhook,\n    originalFileName: $('Listar Vídeos da Sessão').first().json.originalFileName,\n    laudoId: $('Listar Vídeos da Sessão').first().json.laudoId,\n    laudo_url: $('Listar Vídeos da Sessão').first().json.laudo_url\n  }\n  // SEM binary! O vídeo já foi uploadado.\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        352
+      ],
+      "id": "d530e82d-1e0d-4c48-9b67-4c67aab22a12",
+      "name": "Limpar Binário"
+    }
+  ],
+  "connections": {
+    "Webhook Process": {
+      "main": [
+        [
+          {
+            "node": "Inicializar Sessão",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inicializar Sessão": {
+      "main": [
+        [
+          {
+            "node": "Responder Imediatamente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder Imediatamente": {
+      "main": [
+        [
+          {
+            "node": "Criar Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Placeholder": {
+      "main": [
+        [
+          {
+            "node": "Salvar Placeholder HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar Placeholder HTML": {
+      "main": [
+        [
+          {
+            "node": "Listar Vídeos da Sessão",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listar Vídeos da Sessão": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Videos": {
+      "main": [
+        [
+          {
+            "node": "Consolidar Laudo Final",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ler Video do Disco",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar video na VPS": {
+      "main": [
+        [
+          {
+            "node": "Upload para Gemini File API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload para Gemini File API": {
+      "main": [
+        [
+          {
+            "node": "Limpar Binário",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar prompt para Gemini": {
+      "main": [
+        [
+          {
+            "node": "Processar Resposta Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Resposta Gemini": {
+      "main": [
+        [
+          {
+            "node": "Preparar Refinamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Refinamento": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Gemini Refinamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Refinamento": {
+      "main": [
+        [
+          {
+            "node": "Processar Refinamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Refinamento": {
+      "main": [
+        [
+          {
+            "node": "Salvar Resultado Vídeo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar Resultado Vídeo": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidar Laudo Final": {
+      "main": [
+        [
+          {
+            "node": "Gerar HTML do Laudo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar HTML do Laudo": {
+      "main": [
+        [
+          {
+            "node": "HTML para Binário",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML para Binário": {
+      "main": [
+        [
+          {
+            "node": "Salvar HTML Público",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar HTML Público": {
+      "main": [
+        [
+          {
+            "node": "Salvar JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar JSON": {
+      "main": [
+        [
+          {
+            "node": "Gerar PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar PDF": {
+      "main": [
+        [
+          {
+            "node": "Salvar PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar PDF": {
+      "main": [
+        [
+          {
+            "node": "Limpar Sessão",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aguardar Processamento1": {
+      "main": [
+        [
+          {
+            "node": "Enviar prompt para Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ler Video do Disco": {
+      "main": [
+        [
+          {
+            "node": "Salvar video na VPS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpar Binário": {
+      "main": [
+        [
+          {
+            "node": "Aguardar Processamento1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}

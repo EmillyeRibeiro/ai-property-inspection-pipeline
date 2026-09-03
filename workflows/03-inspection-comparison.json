@@ -1,0 +1,570 @@
+{
+  "name": "VIS | Comparativo de Vistorias",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "comparativo-vistorias",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://inspections.example.com",
+          "binaryPropertyName": "pdf_entrada,pdf_saida"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -944,
+        -576
+      ],
+      "id": "60604756-661a-498e-bb2c-eb4e1d480590",
+      "name": "Webhook"
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -48,
+        -576
+      ],
+      "id": "742ff007-329b-49f5-a95e-d5f7c5e0da4c",
+      "name": "Aguardar processamento"
+    },
+    {
+      "parameters": {
+        "jsCode": "const reportData = $input.first().json;\n\n// ============================================================\n// CONFIGURAÇÃO\n// ============================================================\nconst THEME = 'dark'; // 'dark' ou 'light'\nconst LOGO_URL = 'https://example.com/assets/company-logo.png';\nconst COMPANY_NAME = 'Example Real Estate Company';\nconst QR_BASE_URL = 'https://example.com/verify/'; // URL base para verificação\n// ============================================================\n\n// Gerar ID único para verificação\nconst reportId = `VIS-${reportData.codigo_imovel}-${Date.now().toString(36).toUpperCase()}`;\nconst qrData = encodeURIComponent(`${QR_BASE_URL}${reportId}`);\nconst qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrData}&bgcolor=${THEME === 'dark' ? '1e2023' : 'ffffff'}&color=${THEME === 'dark' ? 'f0f0f0' : '1a1a1e'}&format=png`;\n\n// ============================================================\n// TEMAS\n// ============================================================\nconst themes = {\n    dark: {\n        bodyBg: '#141416',\n        contentBg: '#1a1a1e',\n        headerBg: 'linear-gradient(135deg, #0d0d0f 0%, #1e2023 50%, #252528 100%)',\n        gold: '#c9a96e',\n        goldLight: '#d4b878',\n        goldDim: 'rgba(201, 169, 110, 0.12)',\n        textPrimary: '#f0f0f0',\n        textSecondary: '#a0a0a4',\n        textMuted: '#6a6a6e',\n        cardBg: '#1e2023',\n        cardBorder: '#2a2a2e',\n        cardElevated: '#252528',\n        tableBg: '#1e2023',\n        tableHeaderBg: '#252528',\n        tableRowAlt: '#1a1a1e',\n        tableBorder: '#2a2a2e',\n        badgeDangerBg: 'rgba(220, 53, 69, 0.12)',\n        badgeDangerColor: '#ff6b7a',\n        badgeDangerBorder: 'rgba(220, 53, 69, 0.3)',\n        badgeWarningBg: 'rgba(234, 88, 12, 0.12)',\n        badgeWarningColor: '#fb923c',\n        badgeWarningBorder: 'rgba(234, 88, 12, 0.3)',\n        badgeSuccessBg: 'rgba(40, 167, 69, 0.12)',\n        badgeSuccessColor: '#4ade80',\n        badgeSuccessBorder: 'rgba(40, 167, 69, 0.3)',\n        badgeInfoBg: 'rgba(23, 162, 184, 0.12)',\n        badgeInfoColor: '#67e8f9',\n        badgeInfoBorder: 'rgba(23, 162, 184, 0.3)',\n        badgeNeutralBg: 'rgba(108, 117, 125, 0.12)',\n        badgeNeutralColor: '#9ca3af',\n        badgeNeutralBorder: 'rgba(108, 117, 125, 0.3)',\n        summaryBg: 'linear-gradient(135deg, #252528, #1e2023)',\n        summaryBorder: '#2a2a2e',\n        dividerColor: '#2a2a2e',\n        footerBg: '#141416',\n        noChangeBg: 'rgba(74, 222, 128, 0.08)',\n        noChangeBorder: 'rgba(74, 222, 128, 0.2)',\n        noChangeColor: '#4ade80',\n        recBg: 'rgba(201, 169, 110, 0.08)',\n        recBorder: 'rgba(201, 169, 110, 0.2)',\n        entradaBg: '#1a1a1e',\n        entradaBorder: '#2a2a2e',\n        saidaBg: 'rgba(220, 53, 69, 0.06)',\n        saidaBorder: 'rgba(220, 53, 69, 0.2)',\n        chartBg: '#252528',\n        statCardBg: '#252528',\n    },\n    light: {\n        bodyBg: '#f8f8f9',\n        contentBg: '#ffffff',\n        headerBg: 'linear-gradient(135deg, #1a1a1e 0%, #2a2d31 50%, #3a3d41 100%)',\n        gold: '#c9a96e',\n        goldLight: '#d4b878',\n        goldDim: 'rgba(201, 169, 110, 0.1)',\n        textPrimary: '#1a1a1e',\n        textSecondary: '#4a4a4e',\n        textMuted: '#8a8a8e',\n        cardBg: '#ffffff',\n        cardBorder: '#e8e8ea',\n        cardElevated: '#f5f5f7',\n        tableBg: '#ffffff',\n        tableHeaderBg: '#1e2023',\n        tableRowAlt: '#f8f8f9',\n        tableBorder: '#e8e8ea',\n        badgeDangerBg: '#fef2f2',\n        badgeDangerColor: '#dc2626',\n        badgeDangerBorder: '#fecaca',\n        badgeWarningBg: '#fff7ed',\n        badgeWarningColor: '#ea580c',\n        badgeWarningBorder: '#fed7aa',\n        badgeSuccessBg: '#f0fdf4',\n        badgeSuccessColor: '#16a34a',\n        badgeSuccessBorder: '#bbf7d0',\n        badgeInfoBg: '#f0faff',\n        badgeInfoColor: '#0891b2',\n        badgeInfoBorder: '#a5f3fc',\n        badgeNeutralBg: '#f8f9fa',\n        badgeNeutralColor: '#6c757d',\n        badgeNeutralBorder: '#dee2e6',\n        summaryBg: 'linear-gradient(135deg, #f8f8f9, #ffffff)',\n        summaryBorder: '#e8e8ea',\n        dividerColor: '#e8e8ea',\n        footerBg: '#f8f8f9',\n        noChangeBg: '#f0fdf4',\n        noChangeBorder: '#bbf7d0',\n        noChangeColor: '#16a34a',\n        recBg: '#fffbeb',\n        recBorder: '#fde68a',\n        entradaBg: '#f8f8f9',\n        entradaBorder: '#e8e8ea',\n        saidaBg: '#fef2f2',\n        saidaBorder: '#fecaca',\n        chartBg: '#f8f8f9',\n        statCardBg: '#f8f8f9',\n    }\n};\n\nconst t = themes[THEME];\n\n// ============================================================\n// FUNÇÕES AUXILIARES\n// ============================================================\nfunction getClassificationDetails(classification) {\n    switch (classification) {\n        case 'desgaste_natural':\n            return { text: 'Desgaste Natural', badgeBg: t.badgeNeutralBg, badgeColor: t.badgeNeutralColor, badgeBorder: t.badgeNeutralBorder, icon: '⏳' };\n        case 'dano_inquilino':\n            return { text: 'Dano Inquilino', badgeBg: t.badgeDangerBg, badgeColor: t.badgeDangerColor, badgeBorder: t.badgeDangerBorder, icon: '⚠️' };\n        case 'melhoria':\n            return { text: 'Melhoria', badgeBg: t.badgeSuccessBg, badgeColor: t.badgeSuccessColor, badgeBorder: t.badgeSuccessBorder, icon: '✅' };\n        case 'item_ausente':\n            return { text: 'Item Ausente', badgeBg: t.badgeWarningBg, badgeColor: t.badgeWarningColor, badgeBorder: t.badgeWarningBorder, icon: '❌' };\n        case 'item_adicionado':\n            return { text: 'Item Adicionado', badgeBg: t.badgeInfoBg, badgeColor: t.badgeInfoColor, badgeBorder: t.badgeInfoBorder, icon: '➕' };\n        case 'indefinido':\n        default:\n            return { text: 'Indefinido', badgeBg: t.badgeNeutralBg, badgeColor: t.badgeNeutralColor, badgeBorder: t.badgeNeutralBorder, icon: '❓' };\n    }\n}\n\nfunction getGravidadeDetails(gravidade) {\n    switch (gravidade) {\n        case 'leve':\n            return { text: 'Leve', badgeBg: t.badgeSuccessBg, badgeColor: t.badgeSuccessColor, badgeBorder: t.badgeSuccessBorder, icon: '🟢', chartColor: '#4ade80' };\n        case 'moderada':\n            return { text: 'Moderada', badgeBg: t.badgeWarningBg, badgeColor: t.badgeWarningColor, badgeBorder: t.badgeWarningBorder, icon: '🟡', chartColor: '#fb923c' };\n        case 'grave':\n            return { text: 'Grave', badgeBg: t.badgeDangerBg, badgeColor: t.badgeDangerColor, badgeBorder: t.badgeDangerBorder, icon: '🔴', chartColor: '#ff6b7a' };\n        default:\n            return { text: 'N/A', badgeBg: t.badgeNeutralBg, badgeColor: t.badgeNeutralColor, badgeBorder: t.badgeNeutralBorder, icon: '⚪', chartColor: '#9ca3af' };\n    }\n}\n\nfunction getAmbienteIcon(ambiente) {\n    const lower = (ambiente || '').toLowerCase();\n    if (lower.includes('sala')) return '🛋️';\n    if (lower.includes('cozinha')) return '🍳';\n    if (lower.includes('quarto')) return '🛏️';\n    if (lower.includes('banheiro') || lower.includes('wc')) return '🚿';\n    if (lower.includes('varanda') || lower.includes('sacada')) return '🌿';\n    if (lower.includes('garagem')) return '🚗';\n    if (lower.includes('área') || lower.includes('lavanderia')) return '🧺';\n    if (lower.includes('corredor') || lower.includes('hall')) return '🚪';\n    return '📍';\n}\n\n// ============================================================\n// PROCESSAMENTO DE DADOS\n// ============================================================\n\n// Contadores de gravidade\nconst gravidadeContadores = { leve: 0, moderada: 0, grave: 0 };\nif (reportData.divergencias && reportData.divergencias.length > 0) {\n    reportData.divergencias.forEach(div => {\n        if (div.gravidade && gravidadeContadores.hasOwnProperty(div.gravidade)) {\n            gravidadeContadores[div.gravidade]++;\n        }\n    });\n}\n\nconst totalDivergencias = reportData.total_divergencias || (reportData.divergencias ? reportData.divergencias.length : 0);\n\n// ============================================================\n// PIE CHART SVG\n// ============================================================\nfunction generatePieChart() {\n    const total = gravidadeContadores.leve + gravidadeContadores.moderada + gravidadeContadores.grave;\n    if (total === 0) return '<p style=\"text-align:center; color:' + t.textMuted + ';\">Sem dados para gráfico</p>';\n\n    const circumference = 251.327; // 2 * π * 40\n    const radius = 40;\n    \n    // Calcular porcentagens\n    const percentGrave = (gravidadeContadores.grave / total) * 100;\n    const percentModerada = (gravidadeContadores.moderada / total) * 100;\n    const percentLeve = (gravidadeContadores.leve / total) * 100;\n\n    // Calcular dash arrays\n    const dashGrave = (percentGrave / 100) * circumference;\n    const dashModerada = (percentModerada / 100) * circumference;\n    const dashLeve = (percentLeve / 100) * circumference;\n\n    // Calcular offsets (cada fatia começa onde a anterior terminou)\n    const offsetGrave = 0;\n    const offsetModerada = -dashGrave;\n    const offsetLeve = -(dashGrave + dashModerada);\n\n    const graveColor = THEME === 'dark' ? '#ff6b7a' : '#dc2626';\n    const moderadaColor = THEME === 'dark' ? '#fb923c' : '#ea580c';\n    const leveColor = THEME === 'dark' ? '#4ade80' : '#16a34a';\n    const bgCircleColor = THEME === 'dark' ? '#2a2a2e' : '#e8e8ea';\n\n    return `\n        <div style=\"display:flex; align-items:center; gap:32px; padding:24px; background:${t.chartBg}; border-radius:14px; border:1px solid ${t.cardBorder}; margin-bottom:28px;\">\n            <div style=\"width:130px; height:130px; flex-shrink:0;\">\n                <svg viewBox=\"0 0 100 100\" style=\"transform:rotate(-90deg); width:100%; height:100%;\">\n                    <circle cx=\"50\" cy=\"50\" r=\"${radius}\" fill=\"none\" stroke=\"${bgCircleColor}\" stroke-width=\"18\"/>\n                    ${gravidadeContadores.grave > 0 ? `<circle cx=\"50\" cy=\"50\" r=\"${radius}\" fill=\"none\" stroke=\"${graveColor}\" stroke-width=\"18\" stroke-dasharray=\"${dashGrave} ${circumference}\" stroke-dashoffset=\"${offsetGrave}\" stroke-linecap=\"round\"/>` : ''}\n                    ${gravidadeContadores.moderada > 0 ? `<circle cx=\"50\" cy=\"50\" r=\"${radius}\" fill=\"none\" stroke=\"${moderadaColor}\" stroke-width=\"18\" stroke-dasharray=\"${dashModerada} ${circumference}\" stroke-dashoffset=\"${offsetModerada}\" stroke-linecap=\"round\"/>` : ''}\n                    ${gravidadeContadores.leve > 0 ? `<circle cx=\"50\" cy=\"50\" r=\"${radius}\" fill=\"none\" stroke=\"${leveColor}\" stroke-width=\"18\" stroke-dasharray=\"${dashLeve} ${circumference}\" stroke-dashoffset=\"${offsetLeve}\" stroke-linecap=\"round\"/>` : ''}\n                </svg>\n            </div>\n            <div style=\"flex:1;\">\n                <div style=\"font-size:13px; font-weight:700; color:${t.textPrimary}; margin-bottom:16px;\">Distribuição por Gravidade</div>\n                ${gravidadeContadores.grave > 0 ? `\n                <div style=\"display:flex; align-items:center; gap:10px; margin-bottom:10px;\">\n                    <div style=\"width:14px; height:14px; border-radius:4px; background:${graveColor}; flex-shrink:0;\"></div>\n                    <span style=\"font-size:13px; color:${t.textSecondary};\"><strong style=\"color:${t.textPrimary};\">${gravidadeContadores.grave}</strong> Graves (${Math.round(percentGrave)}%)</span>\n                </div>` : ''}\n                ${gravidadeContadores.moderada > 0 ? `\n                <div style=\"display:flex; align-items:center; gap:10px; margin-bottom:10px;\">\n                    <div style=\"width:14px; height:14px; border-radius:4px; background:${moderadaColor}; flex-shrink:0;\"></div>\n                    <span style=\"font-size:13px; color:${t.textSecondary};\"><strong style=\"color:${t.textPrimary};\">${gravidadeContadores.moderada}</strong> Moderadas (${Math.round(percentModerada)}%)</span>\n                </div>` : ''}\n                ${gravidadeContadores.leve > 0 ? `\n                <div style=\"display:flex; align-items:center; gap:10px; margin-bottom:10px;\">\n                    <div style=\"width:14px; height:14px; border-radius:4px; background:${leveColor}; flex-shrink:0;\"></div>\n                    <span style=\"font-size:13px; color:${t.textSecondary};\"><strong style=\"color:${t.textPrimary};\">${gravidadeContadores.leve}</strong> Leves (${Math.round(percentLeve)}%)</span>\n                </div>` : ''}\n            </div>\n        </div>\n    `;\n}\n\n// ============================================================\n// STATS CARDS\n// ============================================================\nfunction generateStatsCards() {\n    let html = '<div style=\"display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:28px;\">';\n    \n    // Total\n    html += `\n        <div style=\"padding:20px; background:${t.statCardBg}; border-radius:12px; border:1px solid ${t.cardBorder}; text-align:center;\">\n            <div style=\"font-size:32px; font-weight:800; color:${t.textPrimary}; line-height:1; margin-bottom:6px;\">${totalDivergencias}</div>\n            <div style=\"font-size:10px; font-weight:700; color:${t.textMuted}; text-transform:uppercase; letter-spacing:0.05em;\">Total Divergências</div>\n        </div>\n    `;\n    \n    // Graves\n    html += `\n        <div style=\"padding:20px; background:${t.badgeDangerBg}; border-radius:12px; border:1px solid ${t.badgeDangerBorder}; text-align:center;\">\n            <div style=\"font-size:32px; font-weight:800; color:${t.badgeDangerColor}; line-height:1; margin-bottom:6px;\">${gravidadeContadores.grave}</div>\n            <div style=\"font-size:10px; font-weight:700; color:${t.badgeDangerColor}; text-transform:uppercase; letter-spacing:0.05em;\">Graves</div>\n        </div>\n    `;\n    \n    // Moderadas\n    html += `\n        <div style=\"padding:20px; background:${t.badgeWarningBg}; border-radius:12px; border:1px solid ${t.badgeWarningBorder}; text-align:center;\">\n            <div style=\"font-size:32px; font-weight:800; color:${t.badgeWarningColor}; line-height:1; margin-bottom:6px;\">${gravidadeContadores.moderada}</div>\n            <div style=\"font-size:10px; font-weight:700; color:${t.badgeWarningColor}; text-transform:uppercase; letter-spacing:0.05em;\">Moderadas</div>\n        </div>\n    `;\n    \n    html += '</div>';\n\n    // Cards por tipo/classificação\n    const tipos = reportData.divergencias_por_tipo || {};\n    const tiposAtivos = Object.entries(tipos).filter(([_, count]) => count > 0);\n    \n    if (tiposAtivos.length > 0) {\n        html += `<div style=\"display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:28px;\">`;\n        tiposAtivos.forEach(([type, count]) => {\n            const details = getClassificationDetails(type);\n            html += `\n                <div style=\"padding:14px 16px; background:${details.badgeBg}; border-radius:10px; border:1px solid ${details.badgeBorder}; display:flex; align-items:center; gap:12px;\">\n                    <span style=\"font-size:20px;\">${details.icon}</span>\n                    <div>\n                        <div style=\"font-size:18px; font-weight:700; color:${details.badgeColor};\">${count}</div>\n                        <div style=\"font-size:10px; font-weight:600; color:${details.badgeColor}; text-transform:uppercase;\">${details.text}</div>\n                    </div>\n                </div>\n            `;\n        });\n        html += '</div>';\n    }\n\n    return html;\n}\n\n// ============================================================\n// DIVERGÊNCIAS (CARDS AGRUPADOS POR AMBIENTE)\n// ============================================================\nfunction generateDivergencias() {\n    if (!reportData.divergencias || reportData.divergencias.length === 0) {\n        return `\n            <div style=\"text-align:center; padding:40px 20px; background:${t.cardElevated}; border-radius:14px; border:1px solid ${t.cardBorder}; margin-bottom:28px;\">\n                <div style=\"font-size:28px; margin-bottom:12px;\">✅</div>\n                <div style=\"font-size:14px; font-weight:600; color:${t.textPrimary};\">Nenhuma divergência encontrada</div>\n                <div style=\"font-size:12px; color:${t.textMuted}; margin-top:4px;\">O imóvel foi devolvido nas mesmas condições.</div>\n            </div>\n        `;\n    }\n\n    // Agrupar por ambiente\n    const ambientes = {};\n    reportData.divergencias.forEach(div => {\n        const ambiente = div.ambiente || 'Não especificado';\n        if (!ambientes[ambiente]) ambientes[ambiente] = [];\n        ambientes[ambiente].push(div);\n    });\n\n    let html = '';\n\n    for (const ambiente in ambientes) {\n        const items = ambientes[ambiente];\n        const icon = getAmbienteIcon(ambiente);\n\n        // Room header\n        html += `\n            <div style=\"margin-bottom:28px; page-break-inside:avoid;\">\n                <div style=\"display:flex; align-items:center; gap:10px; padding:14px 18px; background:${THEME === 'dark' ? '#252528' : '#1e2023'}; border-radius:12px 12px 0 0; color:#ffffff;\">\n                    <span style=\"font-size:16px;\">${icon}</span>\n                    <span style=\"font-size:14px; font-weight:700;\">${ambiente}</span>\n                    <span style=\"margin-left:auto; font-size:11px; background:rgba(255,255,255,0.1); padding:4px 12px; border-radius:20px; font-weight:500;\">${items.length} ${items.length === 1 ? 'item' : 'itens'}</span>\n                </div>\n        `;\n\n        // Divergence cards\n        items.forEach((div, idx) => {\n            const classDetails = getClassificationDetails(div.classificacao);\n            const gravDetails = getGravidadeDetails(div.gravidade);\n            const isLast = idx === items.length - 1;\n\n            html += `\n                <div style=\"border:1px solid ${t.cardBorder}; border-top:none; padding:20px; background:${t.cardBg}; ${isLast ? 'border-radius:0 0 12px 12px;' : ''} page-break-inside:avoid;\">\n                    <!-- Header -->\n                    <div style=\"display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px;\">\n                        <span style=\"font-size:14px; font-weight:700; color:${t.textPrimary};\">${div.item || '—'}</span>\n                        <div style=\"display:flex; gap:6px; flex-wrap:wrap;\">\n                            <span style=\"padding:3px 10px; border-radius:6px; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; background:${classDetails.badgeBg}; color:${classDetails.badgeColor}; border:1px solid ${classDetails.badgeBorder};\">\n                                ${classDetails.icon} ${classDetails.text}\n                            </span>\n                            <span style=\"padding:3px 10px; border-radius:6px; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; background:${gravDetails.badgeBg}; color:${gravDetails.badgeColor}; border:1px solid ${gravDetails.badgeBorder};\">\n                                ${gravDetails.icon} ${gravDetails.text}\n                            </span>\n                        </div>\n                    </div>\n\n                    <!-- Comparison -->\n                    <div style=\"display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:stretch; margin-bottom:14px;\">\n                        <div style=\"padding:12px 14px; border-radius:8px; font-size:11px; line-height:1.7; color:${t.textSecondary}; background:${t.entradaBg}; border:1px solid ${t.entradaBorder};\">\n                            <span style=\"font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:${t.textMuted}; display:block; margin-bottom:6px;\">ENTRADA</span>\n                            ${div.estado_entrada || '—'}\n                        </div>\n                        <div style=\"display:flex; align-items:center; font-size:16px; color:${t.textMuted};\">→</div>\n                        <div style=\"padding:12px 14px; border-radius:8px; font-size:11px; line-height:1.7; color:${t.badgeDangerColor}; background:${t.saidaBg}; border:1px solid ${t.saidaBorder};\">\n                            <span style=\"font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:${t.badgeDangerColor}; display:block; margin-bottom:6px;\">SAÍDA</span>\n                            ${div.estado_saida || '—'}\n                        </div>\n                    </div>\n\n                    <!-- Description/Justification -->\n                    ${div.descricao || div.justificativa ? `\n                    <div style=\"font-size:11px; color:${t.textSecondary}; line-height:1.7; padding:10px 14px; background:${t.goldDim}; border-radius:8px; border-left:3px solid ${t.gold};\">\n                        ${div.descricao ? `<strong>Descrição:</strong> ${div.descricao}` : ''}\n                        ${div.descricao && div.justificativa ? '<br>' : ''}\n                        ${div.justificativa ? `<strong>Justificativa:</strong> ${div.justificativa}` : ''}\n                    </div>` : ''}\n                </div>\n            `;\n        });\n\n        html += '</div>'; // fecha room-section\n    }\n\n    return html;\n}\n\n// ============================================================\n// ITENS SEM ALTERAÇÃO\n// ============================================================\nfunction generateItensSemAlteracao() {\n    if (!reportData.itens_sem_alteracao || reportData.itens_sem_alteracao.length === 0) return '';\n\n    let html = `\n        <div style=\"margin-bottom:28px;\">\n            ${sectionTitle('Itens Sem Alteração')}\n            <div style=\"display:flex; flex-wrap:wrap; gap:8px;\">\n    `;\n\n    reportData.itens_sem_alteracao.forEach(item => {\n        html += `\n            <span style=\"display:inline-flex; align-items:center; gap:6px; padding:6px 14px; background:${t.noChangeBg}; border:1px solid ${t.noChangeBorder}; border-radius:20px; font-size:11px; font-weight:500; color:${t.noChangeColor};\">\n                ✓ ${item}\n            </span>\n        `;\n    });\n\n    html += '</div></div>';\n    return html;\n}\n\n// ============================================================\n// RECOMENDAÇÕES\n// ============================================================\nfunction generateRecomendacoes() {\n    if (!reportData.recomendacoes || reportData.recomendacoes.length === 0) return '';\n\n    let html = `\n        <div style=\"margin-bottom:28px;\">\n            ${sectionTitle('Recomendações')}\n    `;\n\n    reportData.recomendacoes.forEach((rec, index) => {\n        html += `\n            <div style=\"display:flex; gap:14px; padding:14px 0; border-bottom:1px solid ${t.dividerColor}; align-items:flex-start;\">\n                <div style=\"width:28px; height:28px; background:${THEME === 'dark' ? '#252528' : '#1e2023'}; color:${t.gold}; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0;\">${index + 1}</div>\n                <div style=\"font-size:12px; color:${t.textSecondary}; line-height:1.7; padding-top:5px;\">${rec}</div>\n            </div>\n        `;\n    });\n\n    html += '</div>';\n    return html;\n}\n\n// ============================================================\n// SECTION TITLE HELPER\n// ============================================================\nfunction sectionTitle(title) {\n    return `\n        <div style=\"display:flex; align-items:center; gap:10px; margin-bottom:20px; padding-bottom:10px; border-bottom:2px solid ${t.cardBorder};\">\n            <div style=\"width:4px; height:20px; background:${t.gold}; border-radius:2px;\"></div>\n            <span style=\"font-size:16px; font-weight:700; color:${t.textPrimary}; letter-spacing:-0.02em;\">${title}</span>\n        </div>\n    `;\n}\n\n// ============================================================\n// MONTAR HTML FINAL\n// ============================================================\nconst dataGeracao = new Date().toLocaleDateString('pt-BR');\nconst horaGeracao = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });\nconst periodoLocacao = reportData.periodo_locacao_dias\n    ? `${reportData.periodo_locacao_dias} dias (${Math.floor(reportData.periodo_locacao_dias / 30)} meses)`\n    : 'Não informado';\n\nconst htmlContent = `<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Relatório Comparativo - ${reportData.codigo_imovel}</title>\n    <style>\n        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');\n        \n        * { margin: 0; padding: 0; box-sizing: border-box; }\n        \n        body {\n            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;\n            background: ${t.bodyBg};\n            color: ${t.textPrimary};\n            line-height: 1.5;\n            font-size: 12px;\n            -webkit-print-color-adjust: exact;\n            print-color-adjust: exact;\n        }\n\n        @page {\n            size: A4;\n            margin: 0;\n        }\n\n        .page-wrapper {\n            max-width: 100%;\n            margin: 0 auto;\n        }\n\n        /* Header */\n        .header {\n            background: ${t.headerBg};\n            padding: 40px 48px;\n            position: relative;\n            overflow: hidden;\n        }\n        .header::before {\n            content: '';\n            position: absolute;\n            top: -50%;\n            right: -10%;\n            width: 300px;\n            height: 300px;\n            border-radius: 50%;\n            border: 1px solid rgba(201, 169, 110, 0.1);\n        }\n        .header::after {\n            content: '';\n            position: absolute;\n            bottom: -60%;\n            right: 5%;\n            width: 200px;\n            height: 200px;\n            border-radius: 50%;\n            border: 1px solid rgba(201, 169, 110, 0.08);\n        }\n        .gold-bar {\n            height: 3px;\n            background: linear-gradient(90deg, ${t.gold}, ${t.goldLight}, ${t.gold});\n        }\n\n        /* Content */\n        .content {\n            padding: 40px 48px;\n            background: ${t.contentBg};\n        }\n\n        /* Print page breaks */\n        .page-break {\n            page-break-before: always;\n        }\n\n        @media print {\n            body { background: ${t.bodyBg}; }\n            .page-wrapper { box-shadow: none; }\n        }\n    </style>\n</head>\n<body>\n    <div class=\"page-wrapper\">\n        <!-- ===== HEADER ===== -->\n        <div class=\"header\">\n            <div style=\"position:relative; z-index:1; display:flex; justify-content:space-between; align-items:flex-start;\">\n                <div>\n                    <img src=\"${LOGO_URL}\" alt=\"Logo\" style=\"width:48px; height:48px; margin-bottom:14px; opacity:0.9;\">\n                    <div style=\"font-size:22px; font-weight:800; color:#ffffff; letter-spacing:-0.03em; margin-bottom:4px;\">Relatório Comparativo de Vistorias</div>\n                    <div style=\"font-size:12px; color:rgba(255,255,255,0.5); font-weight:400;\">Análise detalhada entre vistoria de entrada e saída</div>\n                </div>\n                <div style=\"text-align:right;\">\n                    <div style=\"display:inline-block; padding:6px 14px; background:rgba(201,169,110,0.15); border:1px solid rgba(201,169,110,0.3); border-radius:20px; font-size:10px; font-weight:600; color:${t.goldLight}; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px;\">Documento Oficial</div>\n                    <div style=\"font-size:11px; color:rgba(255,255,255,0.4); font-family:'JetBrains Mono',monospace;\">${dataGeracao} às ${horaGeracao}</div>\n                    <div style=\"font-size:10px; color:rgba(255,255,255,0.3); font-family:'JetBrains Mono',monospace; margin-top:4px;\">ID: ${reportId}</div>\n                </div>\n            </div>\n        </div>\n        <div class=\"gold-bar\"></div>\n\n        <!-- ===== CONTENT ===== -->\n        <div class=\"content\">\n            <!-- Info Grid -->\n            <div style=\"display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:32px;\">\n                <div style=\"padding:14px 18px; background:${t.cardElevated}; border-radius:10px; border:1px solid ${t.cardBorder};\">\n                    <div style=\"font-size:9px; font-weight:700; color:${t.textMuted}; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px;\">Código do Imóvel</div>\n                    <div style=\"font-size:14px; font-weight:600; color:${t.textPrimary};\">${reportData.codigo_imovel || '—'}</div>\n                </div>\n                <div style=\"padding:14px 18px; background:${t.cardElevated}; border-radius:10px; border:1px solid ${t.cardBorder};\">\n                    <div style=\"font-size:9px; font-weight:700; color:${t.textMuted}; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px;\">Período de Locação</div>\n                    <div style=\"font-size:14px; font-weight:600; color:${t.textPrimary};\">${periodoLocacao}</div>\n                </div>\n                <div style=\"padding:14px 18px; background:${t.cardElevated}; border-radius:10px; border:1px solid ${t.cardBorder}; grid-column:1/-1;\">\n                    <div style=\"font-size:9px; font-weight:700; color:${t.textMuted}; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px;\">Endereço</div>\n                    <div style=\"font-size:14px; font-weight:600; color:${t.textPrimary};\">${reportData.endereco || '—'}</div>\n                </div>\n                <div style=\"padding:14px 18px; background:${t.cardElevated}; border-radius:10px; border:1px solid ${t.cardBorder};\">\n                    <div style=\"font-size:9px; font-weight:700; color:${t.textMuted}; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px;\">Proprietário</div>\n                    <div style=\"font-size:14px; font-weight:600; color:${t.textPrimary};\">${reportData.proprietario || '—'}</div>\n                </div>\n                <div style=\"padding:14px 18px; background:${t.cardElevated}; border-radius:10px; border:1px solid ${t.cardBorder};\">\n                    <div style=\"font-size:9px; font-weight:700; color:${t.textMuted}; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px;\">Inquilino</div>\n                    <div style=\"font-size:14px; font-weight:600; color:${t.textPrimary};\">${reportData.inquilino || '—'}</div>\n                </div>\n                <div style=\"padding:14px 18px; background:${t.cardElevated}; border-radius:10px; border:1px solid ${t.cardBorder};\">\n                    <div style=\"font-size:9px; font-weight:700; color:${t.textMuted}; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px;\">Vistoria de Entrada</div>\n                    <div style=\"font-size:14px; font-weight:600; color:${t.textPrimary};\">${reportData.data_entrada || 'Não informada'}</div>\n                </div>\n                <div style=\"padding:14px 18px; background:${t.cardElevated}; border-radius:10px; border:1px solid ${t.cardBorder};\">\n                    <div style=\"font-size:9px; font-weight:700; color:${t.textMuted}; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px;\">Vistoria de Saída</div>\n                    <div style=\"font-size:14px; font-weight:600; color:${t.textPrimary};\">${reportData.data_saida || 'Não informada'}</div>\n                </div>\n            </div>\n\n            <!-- Resumo Executivo -->\n            ${sectionTitle('Resumo Executivo')}\n            <div style=\"padding:20px 24px; background:${t.summaryBg}; border:1px solid ${t.summaryBorder}; border-radius:12px; margin-bottom:32px; position:relative; overflow:hidden;\">\n                <div style=\"position:absolute; top:0; left:0; width:4px; height:100%; background:${t.gold};\"></div>\n                <p style=\"font-size:13px; line-height:1.8; color:${t.textSecondary}; padding-left:16px;\">${reportData.resumo_executivo || 'Nenhum resumo executivo disponível.'}</p>\n            </div>\n\n            <!-- Estatísticas -->\n            ${sectionTitle('Estatísticas')}\n            ${generateStatsCards()}\n\n            <!-- Pie Chart -->\n            ${generatePieChart()}\n\n            <!-- Divergências Detalhadas -->\n            ${sectionTitle('Divergências Detalhadas')}\n            ${generateDivergencias()}\n\n            <!-- Itens Sem Alteração -->\n            ${generateItensSemAlteracao()}\n\n            <!-- Recomendações -->\n            ${generateRecomendacoes()}\n\n            <!-- Footer -->\n            <div style=\"margin-top:48px; padding-top:24px; border-top:1px solid ${t.dividerColor}; display:flex; justify-content:space-between; align-items:flex-end;\">\n                <div>\n                    <div style=\"font-size:13px; font-weight:600; color:${t.textPrimary}; margin-bottom:4px;\">${COMPANY_NAME}</div>\n                    <div style=\"font-size:11px; color:${t.textMuted}; line-height:1.8;\">\n                        Relatório gerado automaticamente pelo sistema VIS<br>\n                        Data: ${dataGeracao} às ${horaGeracao}<br>\n                        ID: ${reportId}<br>\n                        Este documento não necessita de assinatura.\n                    </div>\n                </div>\n                <div style=\"text-align:center;\">\n                    <img src=\"${qrCodeUrl}\" width=\"80\" height=\"80\" style=\"border-radius:8px; border:1px solid ${t.cardBorder};\" alt=\"QR Code\">\n                    <div style=\"font-size:9px; color:${t.textMuted}; text-transform:uppercase; letter-spacing:0.05em; font-weight:600; margin-top:6px;\">Verificação</div>\n                </div>\n            </div>\n        </div>\n    </div>\n</body>\n</html>`;\n\nreturn [{\n    json: {\n        html: htmlContent,\n        codigo_imovel: reportData.codigo_imovel,\n        report_id: reportId,\n        theme: THEME\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        -576
+      ],
+      "id": "6ab79b23-e93a-4374-8d52-d1f3a8651b9f",
+      "name": "Gerar HTML do Comparativo"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfor (const item of items) {\n  // Guardar referência aos binários ANTES de modificar\n  const originalBinary = item.binary || {};\n  \n  // Extrair dados JSON do body\n  item.json = {\n    codigo_imovel: item.json.body?.codigo_imovel || item.json.codigo_imovel || '',\n    endereco: item.json.body?.endereco || item.json.endereco || '',\n    proprietario: item.json.body?.proprietario || item.json.proprietario || '',\n    inquilino: item.json.body?.inquilino || item.json.inquilino || ''\n  };\n\n  const binaryKeys = Object.keys(originalBinary);\n  const newBinary = {};\n\n  // ─── Estratégia 1: Já existem com os nomes corretos ───\n  if (originalBinary.pdf_entrada) {\n    newBinary.pdf_entrada = originalBinary.pdf_entrada;\n  }\n  if (originalBinary.pdf_saida) {\n    newBinary.pdf_saida = originalBinary.pdf_saida;\n  }\n\n  // ─── Estratégia 2: Identificar por fileName ou nome da chave ───\n  if (!newBinary.pdf_entrada || !newBinary.pdf_saida) {\n    for (const key of binaryKeys) {\n      if (newBinary.pdf_entrada && newBinary.pdf_saida) break;\n      if (originalBinary[key] === newBinary.pdf_entrada || originalBinary[key] === newBinary.pdf_saida) continue;\n\n      const fileName = (originalBinary[key].fileName || '').toLowerCase();\n      const keyLower = key.toLowerCase();\n\n      const isEntrada = fileName.includes('entrada') || keyLower.includes('entrada');\n      const isSaida = fileName.includes('saida') || fileName.includes('saída') || keyLower.includes('saida') || keyLower.includes('saída');\n\n      if (!newBinary.pdf_entrada && isEntrada) {\n        newBinary.pdf_entrada = originalBinary[key];\n      } else if (!newBinary.pdf_saida && isSaida) {\n        newBinary.pdf_saida = originalBinary[key];\n      }\n    }\n  }\n\n  // ─── Estratégia 3: Atribuir por posição (1º = entrada, 2º = saída) ───\n  if (!newBinary.pdf_entrada || !newBinary.pdf_saida) {\n    const usedValues = [newBinary.pdf_entrada, newBinary.pdf_saida].filter(Boolean);\n    const unusedKeys = binaryKeys.filter(k => !usedValues.includes(originalBinary[k]));\n\n    if (!newBinary.pdf_entrada && unusedKeys.length > 0) {\n      newBinary.pdf_entrada = originalBinary[unusedKeys[0]];\n      unusedKeys.shift();\n    }\n    if (!newBinary.pdf_saida && unusedKeys.length > 0) {\n      newBinary.pdf_saida = originalBinary[unusedKeys[0]];\n    }\n  }\n\n  // ─── Debug: lançar erro claro se ainda faltam binários ───\n  if (!newBinary.pdf_entrada || !newBinary.pdf_saida) {\n    const keysInfo = binaryKeys.map(k => `${k}: \"${originalBinary[k].fileName || 'sem nome'}\"`).join(', ');\n    throw new Error(\n      `Binários não encontrados! ` +\n      `pdf_entrada: ${!!newBinary.pdf_entrada}, pdf_saida: ${!!newBinary.pdf_saida}. ` +\n      `Chaves recebidas: [${keysInfo || 'NENHUMA'}]. ` +\n      `Verifique se o frontend envia os arquivos corretamente.`\n    );\n  }\n\n  item.binary = newBinary;\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        -576
+      ],
+      "id": "cc7a83bb-8764-4f5a-9e6c-39a7106f6c69",
+      "name": "Extrair Dados do Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/upload/v1beta/files",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Goog-Upload-Protocol",
+              "value": "raw"
+            },
+            {
+              "name": "X-Goog-Upload-Content-Type",
+              "value": "application/pdf"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "pdf_entrada",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -496,
+        -672
+      ],
+      "id": "e1c8c3bd-e012-40f4-94c6-2cab71a92d6a",
+      "name": "Upload PDF Entrada para Gemini Files API",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_N8N_CREDENTIAL_ID",
+          "name": "Gemini API Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Dados do imóvel vêm do nó \"Extrair Dados do Webhook\"\nconst dadosImovel = $node[\"Extrair Dados do Webhook\"].json;\n\n// URIs dos arquivos vêm dos nós de upload\nconst uploadEntrada = $node[\"Upload PDF Entrada para Gemini Files API\"].json;\nconst uploadSaida = $node[\"Upload PDF Saída para Gemini Files API\"].json;\n\nconst fileUriEntrada = uploadEntrada.file.uri;\nconst fileUriSaida = uploadSaida.file.uri;\n\nconst promptContent = `Você é um especialista em vistorias imobiliárias no Brasil. Analise os dois PDFs de vistoria anexados (entrada e saída) do mesmo imóvel e identifique TODAS as diferenças entre eles.\n\n**Dados do Imóvel:**\n- Código: ${dadosImovel.codigo_imovel}\n- Endereço: ${dadosImovel.endereco}\n- Proprietário: ${dadosImovel.proprietario}\n- Inquilino: ${dadosImovel.inquilino}\n\n**Instruções:**\n1. Compare ambiente por ambiente, item por item.\n2. Para cada diferença encontrada, classifique como:\n   - \"desgaste_natural\": deterioração esperada pelo tempo e uso normal\n   - \"dano_inquilino\": dano que não ocorreria com uso normal (furos, quebras, manchas graves, ferrugem por negligência, mofo, gordura excessiva, cola/fita)\n   - \"melhoria\": item em melhor estado na saída\n   - \"item_ausente\": existia na entrada, não está na saída\n   - \"item_adicionado\": não existia na entrada, aparece na saída\n   - \"indefinido\": não é possível classificar claramente\n3. Extraia as datas das vistorias dos PDFs.\n4. Calcule o período de locação em dias.\n5. Gere um resumo executivo conciso.\n6. Liste recomendações para o proprietário.\n\n**Formato de retorno (JSON puro, sem markdown):**\n{\n  \"codigo_imovel\": \"${dadosImovel.codigo_imovel}\",\n  \"endereco\": \"${dadosImovel.endereco}\",\n  \"proprietario\": \"${dadosImovel.proprietario}\",\n  \"inquilino\": \"${dadosImovel.inquilino}\",\n  \"data_entrada\": \"DD/MM/AAAA\",\n  \"data_saida\": \"DD/MM/AAAA\",\n  \"periodo_locacao_dias\": 0,\n  \"resumo_executivo\": \"\",\n  \"total_divergencias\": 0,\n  \"divergencias_por_tipo\": {\n    \"desgaste_natural\": 0,\n    \"dano_inquilino\": 0,\n    \"melhoria\": 0,\n    \"item_ausente\": 0,\n    \"item_adicionado\": 0,\n    \"indefinido\": 0\n  },\n  \"divergencias\": [\n    {\n      \"ambiente\": \"\",\n      \"item\": \"\",\n      \"estado_entrada\": \"\",\n      \"estado_saida\": \"\",\n      \"descricao\": \"\",\n      \"classificacao\": \"\",\n      \"gravidade\": \"leve|moderada|grave\",\n      \"justificativa\": \"\"\n    }\n  ],\n  \"itens_sem_alteracao\": [],\n  \"recomendacoes\": []\n}\n\nRetorne APENAS o JSON, sem texto antes ou depois, sem crases.`;\n\n// Construir o body COMPLETO como objeto JavaScript\nconst geminiRequestBody = {\n  contents: [\n    {\n      parts: [\n        {\n          fileData: {\n            mimeType: \"application/pdf\",\n            fileUri: fileUriEntrada\n          }\n        },\n        {\n          fileData: {\n            mimeType: \"application/pdf\",\n            fileUri: fileUriSaida\n          }\n        },\n        {\n          text: promptContent\n        }\n      ]\n    }\n  ],\n  generationConfig: {\n    temperature: 0.15,\n    maxOutputTokens: 32768\n  }\n};\n\nreturn [{\n  json: {\n    geminiRequestBody: geminiRequestBody,\n    codigo_imovel: dadosImovel.codigo_imovel,\n    endereco: dadosImovel.endereco,\n    proprietario: dadosImovel.proprietario,\n    inquilino: dadosImovel.inquilino\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        -576
+      ],
+      "id": "0e6c2ab4-b9fd-4887-a2a4-cd2549ca9e8c",
+      "name": "Construir Prompt Gemini"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.geminiRequestBody) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        400,
+        -576
+      ],
+      "id": "50096819-ba91-4652-92c6-86406e60f8ef",
+      "name": "Enviar Prompt para Gemini",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_N8N_CREDENTIAL_ID",
+          "name": "Gemini API Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst geminiResponseText = item.candidates[0].content.parts[0].text;\n\n// Limpar possíveis marcações markdown\nlet jsonText = geminiResponseText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\nlet reportData;\ntry {\n  reportData = JSON.parse(jsonText);\n} catch (e) {\n  // Tentar encontrar JSON dentro do texto\n  const jsonMatch = geminiResponseText.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    try {\n      reportData = JSON.parse(jsonMatch[0]);\n    } catch (e2) {\n      throw new Error(\"Erro ao parsear JSON: \" + e2.message + \"\\nTexto: \" + jsonText.substring(0, 500));\n    }\n  } else {\n    throw new Error(\"Nenhum JSON encontrado na resposta do Gemini\");\n  }\n}\n\n// Calcular totais se necessário\nif (!reportData.total_divergencias && reportData.divergencias) {\n  reportData.total_divergencias = reportData.divergencias.length;\n}\n\nif (!reportData.divergencias_por_tipo && reportData.divergencias) {\n  reportData.divergencias_por_tipo = {\n    desgaste_natural: 0, dano_inquilino: 0, melhoria: 0,\n    item_ausente: 0, item_adicionado: 0, indefinido: 0\n  };\n  reportData.divergencias.forEach(div => {\n    if (reportData.divergencias_por_tipo.hasOwnProperty(div.classificacao)) {\n      reportData.divergencias_por_tipo[div.classificacao]++;\n    } else {\n      reportData.divergencias_por_tipo.indefinido++;\n    }\n  });\n}\n\n// Garantir que os dados do imóvel estejam presentes\n// (podem já vir na resposta do Gemini ou do nó anterior)\nif (!reportData.codigo_imovel) {\n  reportData.codigo_imovel = $node[\"Construir Prompt Gemini\"].json.codigo_imovel;\n}\nif (!reportData.endereco) {\n  reportData.endereco = $node[\"Construir Prompt Gemini\"].json.endereco;\n}\nif (!reportData.proprietario) {\n  reportData.proprietario = $node[\"Construir Prompt Gemini\"].json.proprietario;\n}\nif (!reportData.inquilino) {\n  reportData.inquilino = $node[\"Construir Prompt Gemini\"].json.inquilino;\n}\n\nreturn [{ json: reportData }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -576
+      ],
+      "id": "23d74107-8db6-4dfb-863e-525d243bfa32",
+      "name": "Processar Resposta Gemini e Gerar Relatório"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://gotenberg:3000/forms/chromium/convert/html",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "files",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "marginTop",
+              "value": "0.4"
+            },
+            {
+              "name": "marginBottom",
+              "value": "0.4"
+            },
+            {
+              "name": "marginLeft",
+              "value": "0.4"
+            },
+            {
+              "name": "marginRight",
+              "value": "0.4"
+            },
+            {
+              "name": "printBackground",
+              "value": "true"
+            },
+            {
+              "name": "paperWidth",
+              "value": "8.27"
+            },
+            {
+              "name": "landscape",
+              "value": "false"
+            },
+            {
+              "name": "paperHeight",
+              "value": "11.7"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1296,
+        -576
+      ],
+      "id": "24e834b4-2fd2-48c3-85e7-7dd15073a033",
+      "name": "Gotenberg",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_PORTAL.bitrix24.com/rest/YOUR_USER_ID/YOUR_WEBHOOK_TOKEN/disk.folder.uploadfile",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "41971"
+            },
+            {
+              "name": "data[NAME]",
+              "value": "={{ \"Comparativo_\" + $node[\"Extrair Dados do Webhook\"].json.codigo_imovel + \"_\" + new Date().toISOString().slice(0,10) + \".pdf\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        -576
+      ],
+      "id": "a965c75c-e481-4c15-8e2f-3145aa992d50",
+      "name": "Upload PDF para Bitrix24",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"success\",\n  \"message\": \"Relatório comparativo gerado com sucesso! O arquivo foi salvo no Bitrix24.\",\n  \"report_url\": \"{{ $json.result.DOWNLOAD_URL }}\",\n  \"bitrix24_file_id\": \"{{ $json.result.ID }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2160,
+        -576
+      ],
+      "id": "bc53f65d-1c51-498a-abd6-a1946f5798f8",
+      "name": "Responder ao Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Nó Code: \"Converter HTML para Binário\"\nconst htmlContent = $input.first().json.html;\nconst codigoImovel = $input.first().json.codigo_imovel;\n\nreturn [{\n  json: { codigo_imovel: codigoImovel },\n  binary: {\n    data: {\n      data: Buffer.from(htmlContent, 'utf8').toString('base64'),\n      mimeType: 'text/html',\n      fileName: 'index.html',\n      fileExtension: 'html'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        -576
+      ],
+      "id": "e9c5bbe5-30fd-4df3-8c0b-ce949f83142d",
+      "name": "HTML para Binario"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/upload/v1beta/files",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Goog-Upload-Protocol",
+              "value": "raw"
+            },
+            {
+              "name": "X-Goog-Upload-Content-Type",
+              "value": "application/pdf"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "pdf_saida",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -496,
+        -480
+      ],
+      "id": "7edc5f98-1fd3-4e6c-b4ae-d914fc89ba91",
+      "name": "Upload PDF Saída para Gemini Files API",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_N8N_CREDENTIAL_ID",
+          "name": "Gemini API Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -272,
+        -576
+      ],
+      "id": "f37deab3-9b8d-4195-839c-7dc669bc1f82",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.result.uploadUrl }}",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1936,
+        -576
+      ],
+      "id": "d223b77d-8836-45a3-bc57-b408a3fb753c",
+      "name": "Enviar Arquivo ao Bitrix24"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst gotenbergItems = $('Gotenberg').all();\n\nfor (let i = 0; i < items.length; i++) {\n  items[i].binary = gotenbergItems[i].binary;\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        -576
+      ],
+      "id": "74f1b3d2-6b09-47e3-87d8-47c0fe7e0d28",
+      "name": "Recuperar Binário do Gotenberg"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extrair Dados do Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aguardar processamento": {
+      "main": [
+        [
+          {
+            "node": "Construir Prompt Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar HTML do Comparativo": {
+      "main": [
+        [
+          {
+            "node": "HTML para Binario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Dados do Webhook": {
+      "main": [
+        [
+          {
+            "node": "Upload PDF Entrada para Gemini Files API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Upload PDF Saída para Gemini Files API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload PDF Entrada para Gemini Files API": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir Prompt Gemini": {
+      "main": [
+        [
+          {
+            "node": "Enviar Prompt para Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Prompt para Gemini": {
+      "main": [
+        [
+          {
+            "node": "Processar Resposta Gemini e Gerar Relatório",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Resposta Gemini e Gerar Relatório": {
+      "main": [
+        [
+          {
+            "node": "Gerar HTML do Comparativo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gotenberg": {
+      "main": [
+        [
+          {
+            "node": "Upload PDF para Bitrix24",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload PDF para Bitrix24": {
+      "main": [
+        [
+          {
+            "node": "Recuperar Binário do Gotenberg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML para Binario": {
+      "main": [
+        [
+          {
+            "node": "Gotenberg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload PDF Saída para Gemini Files API": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aguardar processamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Arquivo ao Bitrix24": {
+      "main": [
+        [
+          {
+            "node": "Responder ao Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recuperar Binário do Gotenberg": {
+      "main": [
+        [
+          {
+            "node": "Enviar Arquivo ao Bitrix24",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}
