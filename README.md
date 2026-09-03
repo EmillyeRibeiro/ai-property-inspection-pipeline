@@ -1,47 +1,250 @@
 # AI Property Inspection Pipeline
 
-An end-to-end property inspection automation built with **n8n** and **Google Gemini**, designed to receive inspection videos, analyze property conditions with multimodal AI, generate structured inspection reports, and compare entry/exit inspections.
+> End-to-end AI-powered property inspection automation built with n8n and Google Gemini, combining multimodal video analysis, structured inspection reporting, PDF generation, and entry/exit comparison.
+
+![n8n](https://img.shields.io/badge/n8n-Workflow%20Automation-FF6D5A)
+![Google Gemini](https://img.shields.io/badge/Google%20Gemini-Multimodal%20AI-4285F4)
+![JavaScript](https://img.shields.io/badge/JavaScript-Code%20Nodes-F7DF1E)
+![Status](https://img.shields.io/badge/Status-Portfolio%20Project-success)
+
+## Overview
+
+This project demonstrates an automated property inspection pipeline designed to transform inspection videos into structured, AI-assisted property condition reports.
+
+The architecture combines **n8n workflow orchestration**, **Google Gemini multimodal models**, binary file processing, automated HTML/PDF generation, and entry/exit inspection comparison.
+
+The repository contains sanitized versions of the workflows used to demonstrate the system architecture without exposing production credentials, infrastructure, customer information, or internal identifiers.
+
+## Key Features
+
+- **Sequential video ingestion** organized by inspection session
+- **Multimodal AI analysis** of property inspection videos
+- **Structured property condition extraction**
+- **Automated inspection report generation**
+- **HTML-to-PDF conversion**
+- **Entry vs. exit inspection comparison**
+- **AI-assisted damage and condition-change analysis**
+- **Webhook-based asynchronous processing**
+- **Binary file handling**
+- **Optional CRM/file delivery integration**
+- **Sanitized and portable n8n workflow exports**
 
 ## Architecture
 
-1. **Sequential video upload** — receives inspection videos and stores them by session.
-2. **AI inspection processing** — uploads media to Gemini, analyzes each environment, refines the structured result, and generates HTML/PDF output.
-3. **Entry/exit comparison** — compares two inspection reports with Gemini and produces a structured comparison report.
+```mermaid
+flowchart TD
+    A[Inspection Client / Application] --> B[Sequential Video Upload]
+    B --> C[Session Storage]
 
-## Tech stack
+    C --> D[Inspection Processing Workflow]
+    D --> E[Gemini Files API]
+    E --> F[Multimodal Video Analysis]
+    F --> G[Structured AI Refinement]
 
-- n8n
-- Google Gemini Files API / Gemini multimodal models
-- JavaScript Code nodes
-- Gotenberg for HTML-to-PDF conversion
-- Webhooks and binary file processing
-- Optional Bitrix24 file delivery
+    G --> H[HTML Inspection Report]
+    H --> I[Gotenberg]
+    I --> J[PDF Inspection Report]
 
-## Repository structure
+    J --> K{Inspection Type}
 
-```text
-workflows/
-  01-video-upload.json
-  02-ai-inspection-processing.json
-  03-inspection-comparison.json
-docs/
-  architecture.md
-  security.md
-examples/
-.env.example
-.gitignore
+    K -->|Entry| L[Entry Inspection]
+    K -->|Exit| M[Exit Inspection]
+
+    L --> N[Entry / Exit Comparison]
+    M --> N
+
+    N --> O[Gemini Comparison Analysis]
+    O --> P[Structured Comparison Report]
+    P --> Q[Comparison PDF]
+
+    Q --> R[Optional CRM / File Delivery]
 ```
 
-## Security
+## How It Works
 
-The workflows in this repository are **sanitized portfolio versions**. Production API keys, credential IDs, webhook identifiers, infrastructure URLs, instance metadata, and company-specific internal values have been removed or replaced with placeholders.
+### 1. Video Upload
 
-Never commit your real `.env`, API keys, webhook tokens, or n8n credential exports.
+Inspection videos are received sequentially through a webhook and grouped by a unique inspection session.
+
+This allows large inspections to be divided into multiple videos while maintaining the relationship between the media files and the inspection metadata.
+
+### 2. AI Inspection Processing
+
+The processing workflow retrieves the inspection media and sends the videos to the Gemini Files API.
+
+The pipeline then:
+
+1. waits for media processing;
+2. performs multimodal property analysis;
+3. extracts structured observations;
+4. refines the AI output;
+5. generates the final inspection report.
+
+### 3. Report Generation
+
+Structured inspection data is transformed into an HTML report and converted to PDF using Gotenberg.
+
+This separates AI analysis from document rendering and makes the reporting layer easier to maintain or replace.
+
+### 4. Entry / Exit Comparison
+
+Two completed inspection reports can be submitted to the comparison workflow.
+
+Gemini analyzes the entry and exit inspections and produces a structured comparison highlighting relevant changes in property condition.
+
+The resulting comparison is then rendered as a separate PDF report.
+
+## Workflows
+
+### `01-video-upload.json`
+
+Handles sequential inspection video ingestion.
+
+**Responsibilities:**
+
+- receive inspection metadata;
+- receive binary video files;
+- organize uploads by session;
+- persist inspection media for later processing.
+
+### `02-ai-inspection-processing.json`
+
+Core AI processing pipeline.
+
+**Responsibilities:**
+
+- initialize the inspection session;
+- upload media to Gemini;
+- monitor file processing;
+- perform multimodal analysis;
+- refine structured results;
+- generate the inspection report;
+- convert HTML output to PDF;
+- clean temporary processing data.
+
+### `03-inspection-comparison.json`
+
+Entry/exit inspection comparison pipeline.
+
+**Responsibilities:**
+
+- receive two inspection reports;
+- upload documents for AI analysis;
+- compare property conditions;
+- structure detected changes;
+- generate the comparison report;
+- optionally deliver the resulting document to an external system.
+
+## Tech Stack
+
+| Technology | Role |
+|---|---|
+| **n8n** | Workflow orchestration |
+| **Google Gemini** | Multimodal video/document analysis |
+| **JavaScript** | Data transformation and workflow logic |
+| **Gemini Files API** | Media and document processing |
+| **Gotenberg** | HTML-to-PDF conversion |
+| **Webhooks** | Pipeline triggers and integrations |
+| **Filesystem** | Temporary inspection/session storage |
+| **Bitrix24 (optional)** | External CRM/file delivery |
+
+## Repository Structure
+
+```text
+ai-property-inspection-pipeline/
+│
+├── workflows/
+│   ├── 01-video-upload.json
+│   ├── 02-ai-inspection-processing.json
+│   └── 03-inspection-comparison.json
+│
+├── docs/
+│   ├── architecture.md
+│   └── security.md
+│
+├── examples/
+│   └── inspection-request.example.json
+│
+├── .env.example
+├── .gitignore
+└── README.md
+```
+
+## Configuration
+
+The public workflows contain placeholders instead of production secrets.
+
+Example environment configuration:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+
+INSPECTION_BASE_URL=https://inspections.example.com
+
+BITRIX24_PORTAL=YOUR_PORTAL
+BITRIX24_USER_ID=YOUR_USER_ID
+BITRIX24_WEBHOOK_TOKEN=your_bitrix24_webhook_token_here
+```
+
+Never store production credentials directly inside workflow JSON files.
 
 ## Importing into n8n
 
-Import the JSON files from `workflows/` and configure your own credentials and deployment paths. Review the placeholders before activation. The public workflows are intentionally exported as inactive.
+1. Clone or download this repository.
+2. Open your n8n instance.
+3. Import the JSON files from `workflows/`.
+4. Configure your own credentials.
+5. Replace deployment-specific placeholders.
+6. Configure storage paths and external services.
+7. Review webhook authentication and access controls.
+8. Test the workflows before activating them.
+
+The workflows included in this repository are intentionally exported as **inactive**.
+
+## Security
+
+This repository contains **sanitized portfolio versions** of the production workflows.
+
+The public exports remove or replace:
+
+- API keys;
+- access tokens;
+- credential IDs;
+- production webhook identifiers;
+- private infrastructure URLs;
+- n8n instance metadata;
+- production workflow identifiers;
+- customer information;
+- company-specific internal values.
+
+Secrets should be stored using **n8n Credentials** or secure environment variables.
+
+Additional recommendations are available in [`docs/security.md`](docs/security.md).
+
+## Production vs. Portfolio Version
+
+This repository is intended to demonstrate the **architecture, automation design, AI integration, and engineering decisions** behind the system.
+
+Production deployments may include additional infrastructure, monitoring, authentication, business rules, integrations, and operational safeguards that are intentionally excluded from the public version.
+
+## Engineering Highlights
+
+This project demonstrates practical experience with:
+
+- workflow orchestration;
+- multimodal AI integration;
+- asynchronous API processing;
+- REST APIs and webhooks;
+- binary media handling;
+- prompt-driven structured extraction;
+- filesystem/session management;
+- automated document generation;
+- multi-stage AI pipelines;
+- external system integrations;
+- security-focused workflow sanitization.
 
 ## Disclaimer
 
-This repository demonstrates the technical architecture of an AI-assisted inspection pipeline. AI-generated inspection results should be reviewed by a qualified professional before being used for legal, contractual, or property-condition decisions.
+AI-assisted inspection results should not be treated as an independent technical, engineering, legal, or contractual assessment.
+
+Generated reports should be reviewed by a qualified professional before being used for decisions involving property condition, liability, contractual obligations, or disputes.
